@@ -889,6 +889,8 @@ Architecture focus:
 * What-if simulation.
 * 3D factory visualization.
 
+Real producers introduced in this phase (PLC, OPC UA, IoT Gateway) must follow the event trigger timing rule in `docs/design/event-schema.md` section 6.3 — discrete facts stay event-triggered, continuous sensor readings use report-by-exception rather than fixed-interval publishing.
+
 ---
 
 ## 18. Architecture Decisions (ADR Summary)

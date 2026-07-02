@@ -1,0 +1,370 @@
+# API Contract
+
+## 1. Purpose
+
+This document defines the REST API contract between the IFOC backend and its clients (the Vue 3 dashboard and the Machine Simulator) for the MVP.
+
+The API Layer does not own domain logic. It exposes read models built by the Event, Machine, Alert, and Insight modules, and accepts simulator input that is published to Kafka for asynchronous processing.
+
+This document should be read together with:
+
+* `docs/design/architecture.md` — section 11 (API Layer) and section 12 (Data Storage)
+* `docs/design/event-schema.md` — event envelope and payload schemas
+
+---
+
+## 2. Conventions
+
+### 2.1 Base URL
+
+```text
+http://localhost:3000/api
+```
+
+The MVP runs the backend as a single NestJS process behind Docker Compose. No API gateway or versioned path prefix is required yet.
+
+### 2.2 Content Type
+
+All requests and responses use `application/json`.
+
+### 2.3 Timestamps
+
+All timestamps are ISO 8601 UTC strings, matching the event envelope convention in `event-schema.md`.
+
+```text
+2026-07-02T10:30:00.000Z
+```
+
+### 2.4 Response Envelope
+
+Successful responses return the resource directly. List endpoints wrap results in a `data` array plus a `pagination` object when pagination applies.
+
+```json
+{
+  "data": [ ... ],
+  "pagination": {
+    "limit": 20,
+    "nextCursor": "evt_01J2Z8...",
+    "hasMore": true
+  }
+}
+```
+
+Single-resource endpoints return the resource object without a wrapper.
+
+### 2.5 Error Envelope
+
+All errors use a consistent shape:
+
+```json
+{
+  "error": {
+    "code": "MACHINE_NOT_FOUND",
+    "message": "Machine M-999 was not found."
+  }
+}
+```
+
+See section 6 for the full error code table.
+
+### 2.6 No Authentication
+
+Authentication and authorization are out of scope for the MVP (see `docs/product/mvp.md`). All endpoints are open on the local Docker Compose network.
+
+---
+
+## 3. Resource Overview
+
+| Resource | Backed By | Description |
+| --- | --- | --- |
+| Machine | `machines` | Current machine state projection. |
+| Event | `machine_events` | Immutable event history for a machine. |
+| Alert | `alerts` | Problems derived from WARNING/CRITICAL events. |
+| AI Summary | `ai_summaries` | LLM-generated operational summary. |
+
+---
+
+## 4. Endpoints
+
+### 4.1 `GET /machines`
+
+Returns the current state projection for every machine.
+
+**Response `200`**
+
+```json
+{
+  "data": [
+    {
+      "machineId": "M-001",
+      "name": "CNC Mill 01",
+      "status": "WARNING",
+      "healthScore": 78,
+      "currentTemperature": 95,
+      "productionCount": 142,
+      "lastEventId": "evt_temp_001",
+      "lastUpdatedAt": "2026-07-02T10:30:01.000Z"
+    }
+  ]
+}
+```
+
+---
+
+### 4.2 `GET /machines/:id`
+
+Returns the current state projection for a single machine.
+
+**Response `200`** — same shape as one item from `GET /machines`.
+
+**Response `404`** — `MACHINE_NOT_FOUND` if `:id` does not exist.
+
+---
+
+### 4.3 `GET /machines/:id/events`
+
+Returns event history for a machine, most recent first, using cursor-based pagination.
+
+**Query Parameters**
+
+| Param | Type | Required | Description |
+| --- | --- | --- | --- |
+| `limit` | number | No | Max items to return. Default `20`, max `100`. |
+| `before` | string | No | Return events strictly older than this event's `eventId`. Used to page backward into history. |
+| `eventType` | string | No | Filter to a single event type, e.g. `TEMPERATURE_REPORTED`. |
+
+**Response `200`**
+
+```json
+{
+  "data": [
+    {
+      "eventId": "evt_temp_001",
+      "eventType": "TEMPERATURE_REPORTED",
+      "schemaVersion": 1,
+      "source": "MACHINE_SIMULATOR",
+      "machineId": "M-001",
+      "occurredAt": "2026-07-02T10:30:00.000Z",
+      "producedAt": "2026-07-02T10:30:01.000Z",
+      "correlationId": "corr_demo_001",
+      "payload": {
+        "temperature": 95,
+        "unit": "C"
+      }
+    }
+  ],
+  "pagination": {
+    "limit": 20,
+    "nextCursor": "evt_temp_000",
+    "hasMore": true
+  }
+}
+```
+
+`nextCursor` is the `eventId` to pass as `before` on the next request. `nextCursor` is `null` and `hasMore` is `false` when no older events remain.
+
+**Response `404`** — `MACHINE_NOT_FOUND` if `:id` does not exist.
+
+---
+
+### 4.4 `GET /machines/:id/alerts`
+
+Returns alerts derived from this machine's events, most recent first.
+
+**Query Parameters**
+
+| Param | Type | Required | Description |
+| --- | --- | --- | --- |
+| `status` | string | No | Filter by `ACTIVE` or `RESOLVED`. Returns both when omitted. |
+
+**Response `200`**
+
+```json
+{
+  "data": [
+    {
+      "alertId": "alert_001",
+      "machineId": "M-001",
+      "eventId": "evt_temp_001",
+      "severity": "WARNING",
+      "status": "ACTIVE",
+      "message": "Temperature 95C exceeds warning threshold.",
+      "createdAt": "2026-07-02T10:30:01.000Z",
+      "resolvedAt": null
+    }
+  ]
+}
+```
+
+**Response `404`** — `MACHINE_NOT_FOUND` if `:id` does not exist.
+
+---
+
+### 4.5 `GET /machines/:id/summary`
+
+Returns the most recently generated AI summary for a machine.
+
+**Response `200`**
+
+```json
+{
+  "summaryId": "summary_001",
+  "machineId": "M-001",
+  "scope": "MACHINE",
+  "inputEventIds": ["evt_temp_001", "evt_status_001"],
+  "summary": "M-001 is running above its normal temperature range following a status change to RUNNING. No critical errors reported.",
+  "recommendedActions": [
+    "Check cooling system airflow.",
+    "Monitor temperature for the next cycle."
+  ],
+  "model": "gpt-4.1",
+  "createdAt": "2026-07-02T10:31:00.000Z"
+}
+```
+
+**Response `404`** — `SUMMARY_NOT_FOUND` if no summary has ever been generated for this machine. `MACHINE_NOT_FOUND` if `:id` does not exist.
+
+---
+
+### 4.6 `POST /machines/:id/summary`
+
+Triggers a new AI summary for a machine. The MVP calls the LLM synchronously and returns the generated summary in the response — there is no job queue or polling in the MVP.
+
+**Request Body** — none required.
+
+```json
+{}
+```
+
+**Response `200`** — the newly created summary, same shape as `GET /machines/:id/summary`.
+
+**Response `404`** — `MACHINE_NOT_FOUND` if `:id` does not exist.
+
+**Response `502`** — `LLM_CALL_FAILED` if the upstream LLM API call fails. The dashboard should treat this as advisory-feature failure and continue to show existing machine/event/alert data (see `architecture.md` section 16: "Keep AI failure isolated from dashboard availability").
+
+---
+
+### 4.7 `POST /simulator/events`
+
+Accepts a fully-formed machine event from the Machine Simulator and publishes it to the `machine.events` Kafka topic, keyed by `machineId`. The simulator is responsible for constructing the complete event envelope, including `eventId`, `occurredAt`, `producedAt`, `correlationId`, and `schemaVersion`, per `docs/design/event-schema.md`.
+
+This endpoint performs envelope and payload validation (section 9 of `event-schema.md`) but does not update any projection directly — projections are updated asynchronously by Kafka consumers.
+
+**Request Body**
+
+```json
+{
+  "eventId": "evt_temp_001",
+  "eventType": "TEMPERATURE_REPORTED",
+  "schemaVersion": 1,
+  "source": "MACHINE_SIMULATOR",
+  "machineId": "M-001",
+  "occurredAt": "2026-07-02T10:30:00.000Z",
+  "producedAt": "2026-07-02T10:30:01.000Z",
+  "correlationId": "corr_demo_001",
+  "payload": {
+    "temperature": 95,
+    "unit": "C"
+  }
+}
+```
+
+**Response `202`** — the event was valid and published to Kafka. Consumers process it asynchronously, so `GET /machines/:id`, `.../events`, and `.../alerts` may briefly lag behind.
+
+```json
+{
+  "eventId": "evt_temp_001",
+  "status": "PUBLISHED"
+}
+```
+
+If `eventId` duplicates a previously accepted event, the API still responds `202` — duplicate detection is a consumer-side idempotency concern (design rule 4 in `CLAUDE.md`), not an API-layer error.
+
+**Response `400`** — `INVALID_EVENT_ENVELOPE` if a required envelope field is missing or malformed.
+
+**Response `422`** — `UNSUPPORTED_EVENT_TYPE` if `eventType` is not one of the MVP event types, or `PAYLOAD_VALIDATION_FAILED` if `payload` does not match the schema for the given `eventType`.
+
+---
+
+## 5. Data Models
+
+### 5.1 Machine
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `machineId` | string | Machine identifier. |
+| `name` | string | Human-readable machine name. |
+| `status` | string | One of `RUNNING`, `IDLE`, `WARNING`, `ERROR`, `MAINTENANCE`. |
+| `healthScore` | number | Derived score updated per the Machine State Rules in `CLAUDE.md`. |
+| `currentTemperature` | number | Latest reported temperature, if any. |
+| `productionCount` | number | Cumulative completed production count. |
+| `lastEventId` | string | `eventId` of the most recent event applied to this projection. |
+| `lastUpdatedAt` | string | Timestamp this projection was last updated. |
+
+### 5.2 Event
+
+See `docs/design/event-schema.md` section 3 for the full envelope and section 5 for per-type payload schemas.
+
+### 5.3 Alert
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `alertId` | string | Alert identifier. |
+| `machineId` | string | Machine this alert belongs to. |
+| `eventId` | string | `eventId` that triggered this alert. |
+| `severity` | string | `WARNING` or `CRITICAL`. |
+| `status` | string | `ACTIVE` or `RESOLVED`. |
+| `message` | string | Human-readable alert description. |
+| `createdAt` | string | When the alert was created. |
+| `resolvedAt` | string \| null | When the alert was resolved, if applicable. |
+
+### 5.4 AI Summary
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `summaryId` | string | Summary identifier. |
+| `machineId` | string | Machine this summary describes. |
+| `scope` | string | `MACHINE` in the MVP. Reserved for future `FACTORY`-level scope. |
+| `inputEventIds` | string[] | Events used to generate this summary, for traceability. |
+| `summary` | string | LLM-generated operational summary text. |
+| `recommendedActions` | string[] | LLM-suggested next steps. |
+| `model` | string | LLM model identifier used to generate this summary. |
+| `createdAt` | string | When the summary was generated. |
+
+---
+
+## 6. Error Handling
+
+| HTTP Status | Code | Meaning |
+| --- | --- | --- |
+| `400` | `INVALID_EVENT_ENVELOPE` | Request body is missing a required envelope field or a field has the wrong type. |
+| `404` | `MACHINE_NOT_FOUND` | The requested `machineId` does not exist. |
+| `404` | `SUMMARY_NOT_FOUND` | No AI summary has been generated for this machine yet. |
+| `422` | `UNSUPPORTED_EVENT_TYPE` | `eventType` is not a recognized MVP event type. |
+| `422` | `PAYLOAD_VALIDATION_FAILED` | `payload` does not match the schema required for `eventType`. |
+| `502` | `LLM_CALL_FAILED` | The Insight Service could not reach the LLM API. |
+| `500` | `INTERNAL_ERROR` | Unexpected server-side failure. |
+
+---
+
+## 7. Versioning
+
+The MVP does not version the API path. Breaking changes to a response shape should be avoided while the dashboard is the only consumer; if a breaking change is unavoidable, introduce a versioned path prefix (e.g. `/api/v2`) rather than changing `/api` in place.
+
+This is independent of `schemaVersion` on the event envelope, which versions event payloads, not API responses.
+
+---
+
+## 8. Future Endpoints
+
+Not part of the MVP, but anticipated by the roadmap in `docs/product/product-roadmap.md`:
+
+```text
+POST /machines/:id/alerts/:alertId/resolve   # Phase 2 — incident management
+GET  /events/search                          # Phase 3 — event search
+GET  /machines/:id/history                   # Phase 3 — machine history
+POST /insights/chat                          # Phase 4 — AI chat
+GET  /digital-twin/:id/state                 # Phase 5 — digital twin
+```
+
+Each future endpoint should be specified in this document before implementation, following the same contract style as section 4.

@@ -65,7 +65,7 @@ Short records of why a significant technical choice was made.
 
 ## Assets
 
-No diagram files exist yet (`.drawio`, `.png`, `.svg`, `.mmd`) — every diagram today is ASCII art embedded directly in the relevant `.md` file. This table tracks which diagrams are planned, their priority, and which doc's ASCII version they should be drawn from.
+All 5 planned diagrams exist as Mermaid (`.mmd`) source files under `docs/assets/mermaid/`. No `.drawio`/`.png`/`.svg` exports exist yet — those are only needed once slides/README images are actually being produced. Each prose doc still keeps its original ASCII version alongside a link to the `.mmd` file (see Diagram Workflow below for why they aren't merged).
 
 ### Diagram Workflow
 
@@ -92,8 +92,12 @@ The corresponding prose doc (e.g. `architecture.md`) links to the `.mmd` file ra
 1. `product/mvp.md` — what the MVP does and why.
 2. `design/architecture.md` — how the system is structured.
 3. `design/event-schema.md` — the event contract every module depends on.
-4. `design/api.md` — how the frontend and simulator talk to the backend.
-5. `product/product-roadmap.md` — where the project goes after the MVP.
+4. `design/machine-schema.md` — how events turn into machine state.
+5. `design/api.md` — how the frontend and simulator talk to the backend.
+6. `design/event-flow.md` — a single event walked through the whole system, tying 3–5 together.
+7. `product/product-roadmap.md` — where the project goes after the MVP.
+
+`decisions/` and `deployment/` aren't part of this sequential read — treat them as reference material: open an ADR when you want to know why a choice was made, open `deployment/` when you're actually trying to run the system.
 
 ## Related Top-Level Guidance
 

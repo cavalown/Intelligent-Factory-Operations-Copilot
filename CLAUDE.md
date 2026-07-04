@@ -93,6 +93,18 @@ When consumers process events, they apply these projection rules:
 | `STATUS_CHANGED` (sensor failure) | WARNING | −15 |
 | `PRODUCTION_COMPLETED` | RUNNING | +2 |
 
+## Alert Rules
+
+Alert Service derives severity from event type and payload — raw events have no `severity` field:
+
+| Event | Condition | Alert | Severity |
+|---|---|---|---|
+| `TEMPERATURE_REPORTED` | over threshold | Yes | WARNING |
+| `ERROR_OCCURRED` | always | Yes | CRITICAL |
+| `MAINTENANCE_REQUIRED` | always | Yes | WARNING |
+| `STATUS_CHANGED` | sensor failure only | Yes | WARNING |
+| `PRODUCTION_COMPLETED` | never | No | — |
+
 ## REST API Contract
 
 ```
@@ -105,7 +117,7 @@ POST /machines/:id/summary    # triggers LLM call
 POST /simulator/events        # publishes event to Kafka
 ```
 
-Full API contract: `docs/design/api.md` (to be populated).
+Full API contract: `docs/design/api.md`.
 
 ## MongoDB Collections
 
@@ -118,10 +130,16 @@ Full API contract: `docs/design/api.md` (to be populated).
 
 ## Key Design Documents
 
+- `docs/README.md` — full documentation index and suggested reading order
 - `docs/design/architecture.md` — full system architecture and principles
 - `docs/design/event-schema.md` — event envelope, payload schemas, versioning rules
+- `docs/design/api.md` — REST API contract
+- `docs/design/machine-schema.md` — machine domain model, status transitions, health score rules
+- `docs/design/event-flow.md` — one event's full lifecycle, worked example
 - `docs/product/mvp.md` — MVP scope, machine state rules, definition of done
 - `docs/product/product-roadmap.md` — 5-phase roadmap (Foundation → Digital Twin)
+- `docs/decisions/` — ADRs for Kafka, MongoDB, REST, and AI-summary-before-RAG choices
+- `docs/deployment/` — Docker Compose and local development setup
 
 ## MVP Scope Boundaries
 

@@ -91,35 +91,37 @@ Allow users to simulate factory events.
 
 Supported events:
 
-* TEMPERATURE_HIGH
-* EMERGENCY_STOP
-* SENSOR_FAILURE
+* STATUS_CHANGED
+* TEMPERATURE_REPORTED
+* ERROR_OCCURRED
 * MAINTENANCE_REQUIRED
 * PRODUCTION_COMPLETED
 
 ---
 
-# Supported Event Types
+# Alert Rules
 
-| Event                | Severity |
-| -------------------- | -------- |
-| TEMPERATURE_HIGH     | WARNING  |
-| EMERGENCY_STOP       | CRITICAL |
-| SENSOR_FAILURE       | WARNING  |
-| MAINTENANCE_REQUIRED | WARNING  |
-| PRODUCTION_COMPLETED | INFO     |
+Alert Service derives severity from event type and payload — raw events have no `severity` field (see `docs/design/event-schema.md` §3.2).
+
+| Event                | Condition            | Alert | Severity |
+| --------------------- | --------------------- | ----- | -------- |
+| TEMPERATURE_REPORTED  | over threshold         | Yes   | WARNING  |
+| ERROR_OCCURRED        | always                 | Yes   | CRITICAL |
+| MAINTENANCE_REQUIRED  | always                 | Yes   | WARNING  |
+| STATUS_CHANGED        | sensor failure only    | Yes   | WARNING  |
+| PRODUCTION_COMPLETED  | never                  | No    | —        |
 
 ---
 
 # Machine State Rules
 
-| Event                | Machine Status | Health Score |
-| -------------------- | -------------- | ------------ |
-| TEMPERATURE_HIGH     | WARNING        | -10          |
-| EMERGENCY_STOP       | ERROR          | -30          |
-| SENSOR_FAILURE       | WARNING        | -15          |
-| MAINTENANCE_REQUIRED | MAINTENANCE    | -20          |
-| PRODUCTION_COMPLETED | RUNNING        | +2           |
+| Event                              | Machine Status | Health Score |
+| ----------------------------------- | --------------- | ------------ |
+| TEMPERATURE_REPORTED (over threshold) | WARNING       | -10          |
+| ERROR_OCCURRED                       | ERROR           | -30          |
+| STATUS_CHANGED (sensor failure)      | WARNING         | -15          |
+| MAINTENANCE_REQUIRED                 | MAINTENANCE     | -20          |
+| PRODUCTION_COMPLETED                 | RUNNING         | +2           |
 
 ---
 
@@ -232,7 +234,7 @@ The MVP is considered complete when:
 
 1. Open the Dashboard.
 2. Navigate to the Simulator.
-3. Generate a **TEMPERATURE_HIGH** event.
+3. Generate a **TEMPERATURE_REPORTED** event (above the machine's threshold).
 4. Verify the event appears in the Event Center.
 5. Verify the machine status changes.
 6. Open the Machine Detail page.

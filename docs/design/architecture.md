@@ -186,9 +186,9 @@ The Machine Simulator generates machine events for demos and local development.
 
 Supported MVP events:
 
-* `TEMPERATURE_HIGH`
-* `EMERGENCY_STOP`
-* `SENSOR_FAILURE`
+* `STATUS_CHANGED`
+* `TEMPERATURE_REPORTED`
+* `ERROR_OCCURRED`
 * `MAINTENANCE_REQUIRED`
 * `PRODUCTION_COMPLETED`
 
@@ -391,7 +391,7 @@ Event history is append-oriented. Events should not be treated as temporary mess
 An event records a fact:
 
 ```text
-Machine M-001 reported TEMPERATURE_HIGH at 2026-07-02T10:30:00Z.
+Machine M-001 reported a TEMPERATURE_REPORTED event (95C) at 2026-07-02T10:30:00Z.
 ```
 
 Once stored, the event becomes part of the operational timeline.
@@ -404,23 +404,27 @@ Example:
 
 | Event | Machine Projection |
 | --- | --- |
-| `TEMPERATURE_HIGH` | Status becomes `WARNING`, health score decreases |
-| `EMERGENCY_STOP` | Status becomes `ERROR`, health score decreases significantly |
+| `TEMPERATURE_REPORTED` (over threshold) | Status becomes `WARNING`, health score decreases |
+| `ERROR_OCCURRED` | Status becomes `ERROR`, health score decreases significantly |
 | `PRODUCTION_COMPLETED` | Status becomes `RUNNING`, production count increases |
 
 The dashboard reads this projection to display current machine status.
 
 ### 9.3 Alert Projection
 
-The alert projection converts relevant events into operational alerts.
+The alert projection converts relevant events into operational alerts. Alert Service derives severity from the event type and payload — there is no raw `severity` field on the event itself (see §12.1).
 
-Example:
+| Event Type | Condition | Alert Created | Severity |
+| --- | --- | --- | --- |
+| `TEMPERATURE_REPORTED` | `payload.temperature > machine.temperatureThreshold` | Yes | `WARNING` |
+| `TEMPERATURE_REPORTED` | Within threshold | No | — |
+| `ERROR_OCCURRED` | — | Yes | `CRITICAL` |
+| `MAINTENANCE_REQUIRED` | — | Yes | `WARNING` |
+| `STATUS_CHANGED` | `payload.reason` indicates sensor failure | Yes | `WARNING` |
+| `STATUS_CHANGED` | Any other transition | No | — |
+| `PRODUCTION_COMPLETED` | — | No | — |
 
-| Event Severity | Alert Behavior |
-| --- | --- |
-| `INFO` | No alert |
-| `WARNING` | Create warning alert |
-| `CRITICAL` | Create critical alert |
+This mirrors the health-score treatment of the same events in `docs/design/machine-schema.md` §5.2: `ERROR_OCCURRED` is always `CRITICAL` regardless of `payload.recoverable` (machine-schema.md doesn't distinguish on that field either), and `STATUS_CHANGED` only creates an alert for the sensor-failure case — the same case where it's the only one that affects health score.
 
 Future versions can replace simple code-based logic with a rule engine.
 
@@ -582,26 +586,29 @@ ai_summaries
 
 Stores immutable event history.
 
-Core fields:
+Core fields — these are exactly the event envelope fields defined in `docs/design/event-schema.md` §3, plus one storage-level field:
 
 ```text
 eventId
-machineId
 eventType
-severity
-message
-timestamp
-metadata
+schemaVersion
+source
+machineId
+occurredAt
+producedAt
+correlationId
+payload
 createdAt
 ```
+
+There is no `severity` field — per `CLAUDE.md` design rule 2, severity is a consumer interpretation computed by Alert Service, not part of the raw stored event. `createdAt` is when Event Service inserted the document, distinct from `occurredAt` (when the fact happened) and `producedAt` (when the producer published it) — it exists for storage/debugging purposes only, not as part of the envelope contract.
 
 Recommended indexes:
 
 ```text
 eventId unique
-machineId + timestamp
-eventType + timestamp
-severity + timestamp
+machineId + occurredAt
+eventType + occurredAt
 ```
 
 ### 12.2 `machines`
@@ -671,9 +678,10 @@ Expected services:
 frontend
 backend
 mongodb
-kafka
-zookeeper or kraft controller
+kafka (KRaft mode — no separate Zookeeper service)
 ```
+
+See `docs/deployment/docker-compose.md` for the full Compose file and `docs/decisions/ADR-0001-use-kafka.md` for why Kafka was chosen.
 
 MVP deployment goals:
 

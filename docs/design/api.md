@@ -211,8 +211,8 @@ Returns the most recently generated AI summary for a machine.
   "summaryId": "summary_001",
   "machineId": "M-001",
   "scope": "MACHINE",
-  "inputEventIds": ["evt_temp_001", "evt_status_001"],
-  "summary": "M-001 is running above its normal temperature range following a status change to RUNNING. No critical errors reported.",
+  "inputEventIds": ["evt_prod_098", "evt_temp_001"],
+  "summary": "M-001 was running normally, then reported a temperature above its warning threshold. No critical errors reported.",
   "recommendedActions": [
     "Check cooling system airflow.",
     "Monitor temperature for the next cycle."

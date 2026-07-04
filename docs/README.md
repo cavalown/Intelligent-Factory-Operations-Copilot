@@ -36,7 +36,7 @@ Defines how IFOC is built.
 | [`design/event-schema.md`](design/event-schema.md) | ✅ | Event envelope, payload schemas, producer/consumer contract, versioning. |
 | [`design/api.md`](design/api.md) | ✅ | REST API contract between backend, dashboard, and simulator. |
 | [`design/machine-schema.md`](design/machine-schema.md) | ✅ | Machine domain model — projection fields, status transitions, health score rules. |
-| [`design/event-flow.md`](design/event-flow.md) | 🔜 | Detailed event processing flow (may be superseded by architecture.md §9–10). |
+| [`design/event-flow.md`](design/event-flow.md) | ✅ | Worked example — one event's full lifecycle, from simulator trigger through all consumers to AI summary. Complements, doesn't repeat, architecture.md §9–10. |
 | [`design/database.md`](design/database.md) | 🔮 | Future: detailed MongoDB schema, indexes, and query patterns. |
 | [`design/ai-design.md`](design/ai-design.md) | 🔮 | Future: Insight Service prompt design, RAG architecture (Phase 3). |
 | [`design/security.md`](design/security.md) | 🔮 | Future: authentication, authorization, secrets management. |
@@ -59,8 +59,8 @@ Short records of why a significant technical choice was made.
 
 | Doc | Status | Description |
 | --- | --- | --- |
-| `deployment/local-development.md` | 🔜 | Local dev setup outside Docker Compose. |
-| `deployment/docker-compose.md` | 🔜 | Docker Compose services, ports, environment variables. |
+| [`deployment/local-development.md`](deployment/local-development.md) | ✅ | Local dev setup outside Docker Compose. |
+| [`deployment/docker-compose.md`](deployment/docker-compose.md) | ✅ | Docker Compose services, ports, environment variables. |
 | `deployment/kubernetes.md` | 🔮 | Future: production Kubernetes deployment (explicitly out of MVP scope). |
 
 ## Assets

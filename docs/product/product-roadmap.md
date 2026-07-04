@@ -144,3 +144,5 @@ AI Copilot
     ▼
 Digital Twin
 ```
+
+Diagram source: [`docs/assets/mermaid/roadmap-evolution.mmd`](../assets/mermaid/roadmap-evolution.mmd).

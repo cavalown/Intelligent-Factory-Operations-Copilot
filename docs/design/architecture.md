@@ -145,6 +145,8 @@ The target architecture is event-driven. One machine event can create multiple p
                   +---------------+
 ```
 
+Mermaid source (for exporting to `.svg`/`.png`/`.drawio`): [`docs/assets/mermaid/architecture.mmd`](../assets/mermaid/architecture.mmd). This is the Phase 1/MVP snapshot only — see the scope note at the top of that file before reusing it for a later roadmap phase.
+
 For the MVP, these services are implemented as modules inside a NestJS modular monolith. The architecture still names them as services because each module has a clear responsibility and can be extracted later.
 
 MVP runtime flow:

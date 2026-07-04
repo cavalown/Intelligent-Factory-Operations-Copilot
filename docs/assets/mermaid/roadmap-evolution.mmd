@@ -1,0 +1,18 @@
+flowchart TD
+    %% Roadmap Evolution — Future Vision
+    %% Source of truth for this diagram: docs/product/product-roadmap.md ("Future Vision")
+    %% Referenced (linked, not embedded) from: docs/product/product-roadmap.md
+    %% SCOPE: literal transcription of the "Future Vision" ASCII chain. Note
+    %% this 6-node chain is conceptual, not a 1:1 relabeling of the Phase 1-5
+    %% table earlier in the same doc — "Factory" and "Industrial Events" are
+    %% both lead-ins roughly under Phase 1, while the remaining four nodes
+    %% align with Phases 2-5. Presentation material, not a technical reference.
+    %% VERSIONING: update in place; do not fork per phase (see architecture.mmd).
+    Factory["Factory"]
+    Events["Industrial Events"]
+    Streaming["Event Streaming"]
+    Intelligence["Operational Intelligence"]
+    Copilot["AI Copilot"]
+    Twin["Digital Twin"]
+
+    Factory --> Events --> Streaming --> Intelligence --> Copilot --> Twin

@@ -65,12 +65,25 @@ Short records of why a significant technical choice was made.
 
 ## Assets
 
+No diagram files exist yet (`.drawio`, `.png`, `.svg`, `.mmd`) — every diagram today is ASCII art embedded directly in the relevant `.md` file. This table tracks which diagrams are planned, their priority, and which doc's ASCII version they should be drawn from.
+
+### Diagram Workflow
+
+Each diagram's source of truth is a standalone Mermaid file under `docs/assets/mermaid/<name>.mmd` — one file per diagram, so each can later be fed into `mmdc` (mermaid-cli) or draw.io's Mermaid import to produce `.svg`/`.png`/`.drawio` output without hand-redrawing.
+
+The corresponding prose doc (e.g. `architecture.md`) links to the `.mmd` file rather than embedding its content. This is a deliberate limitation, not an oversight: plain Markdown has no file-transclusion syntax, and GitHub only renders Mermaid when it's a fenced ` ```mermaid ` block physically inside the `.md` file being viewed — a link to a separate `.mmd` file renders as plain text, not a diagram, when opened on GitHub. Viewing the rendered diagram requires a Mermaid-aware tool (VS Code's Mermaid preview, mermaid.live, etc.). This was chosen over duplicating the Mermaid source into the doc's own fenced block, to avoid two copies drifting out of sync.
+
+| Priority | Diagram | Status | Drawn From | Planned Source |
+| --- | --- | --- | --- | --- |
+| High | System Architecture | ✅ | `design/architecture.md` §5 (High-Level Architecture) | [`assets/mermaid/architecture.mmd`](assets/mermaid/architecture.mmd) — Phase 1/MVP snapshot only, see scope note in the file |
+| High | Event Flow Sequence Diagram | ✅ | `design/event-flow.md` (full worked example) | [`assets/mermaid/event-flow.mmd`](assets/mermaid/event-flow.mmd) |
+| Medium | Deployment Topology | ✅ | `design/architecture.md` §13, `deployment/docker-compose.md` | [`assets/mermaid/deployment-topology.mmd`](assets/mermaid/deployment-topology.mmd) |
+| Medium | Machine Status State Diagram | ✅ | `design/machine-schema.md` §4 | [`assets/mermaid/machine-status-state.mmd`](assets/mermaid/machine-status-state.mmd) |
+| Low | Roadmap Evolution Diagram | ✅ | `product/product-roadmap.md` ("Future Vision") | [`assets/mermaid/roadmap-evolution.mmd`](assets/mermaid/roadmap-evolution.mmd) |
+
 | Path | Status | Description |
 | --- | --- | --- |
-| `assets/architecture.drawio` | 🔜 | Editable source for the architecture diagram. |
-| `assets/event-flow.drawio` | 🔜 | Editable source for the event flow diagram. |
-| `assets/system-overview.png` | 🔜 | Exported system overview image for README/slides. |
-| `assets/screenshots/` | 🔜 | Dashboard screenshots for demos and documentation. |
+| `assets/screenshots/` | 🔜 | Dashboard screenshots for demos and documentation — not applicable until the frontend exists. |
 
 ---
 

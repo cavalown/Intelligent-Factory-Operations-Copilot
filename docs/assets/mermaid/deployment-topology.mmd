@@ -1,0 +1,25 @@
+flowchart TD
+    %% Deployment Topology — Local Docker Compose
+    %% Source of truth for this diagram: docs/deployment/docker-compose.md
+    %% Referenced (linked, not embedded) from: docs/deployment/docker-compose.md
+    %% SCOPE: MVP local Docker Compose topology only (docker-compose.md sections 2-5).
+    %% Does not cover the hybrid native-dev setup in local-development.md, or
+    %% any future production/Kubernetes deployment (out of MVP scope).
+    %% VERSIONING: update in place; do not fork per phase (see architecture.mmd).
+    Host["Host Machine<br/>localhost"]
+
+    subgraph DockerNetwork["Docker Compose Network"]
+        Frontend["frontend<br/>Vue 3 + TypeScript<br/>:5173"]
+        Backend["backend<br/>NestJS modular monolith<br/>:3000"]
+        Mongo["mongodb<br/>mongo:7<br/>:27017"]
+        Kafka["kafka<br/>apache/kafka:3.8.0 (KRaft)<br/>PLAINTEXT :9092 / PLAINTEXT_HOST :9093"]
+    end
+
+    Host -->|"localhost:5173"| Frontend
+    Host -->|"localhost:3000/api"| Backend
+    Host -->|"localhost:27017 (debugging)"| Mongo
+    Host -->|"localhost:9093 (debugging)"| Kafka
+
+    Frontend -->|"VITE_API_BASE_URL"| Backend
+    Backend -->|"MONGODB_URI mongodb:27017"| Mongo
+    Backend -->|"KAFKA_BROKERS kafka:9092"| Kafka

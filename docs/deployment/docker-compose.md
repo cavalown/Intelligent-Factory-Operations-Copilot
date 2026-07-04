@@ -6,6 +6,8 @@ This document defines the Docker Compose setup that runs all of IFOC's MVP servi
 
 Kafka runs from day one of the MVP, not a later phase — it is the event backbone for the core `simulator → Kafka → consumers → MongoDB` flow described in `CLAUDE.md`, so it belongs in the same Compose file as everything else from the start.
 
+Topology diagram source: [`docs/assets/mermaid/deployment-topology.mmd`](../assets/mermaid/deployment-topology.mmd).
+
 ---
 
 ## 2. Services Overview

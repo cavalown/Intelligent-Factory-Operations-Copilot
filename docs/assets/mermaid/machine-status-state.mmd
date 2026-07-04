@@ -1,0 +1,44 @@
+stateDiagram-v2
+    %% Machine Status State Diagram
+    %% Source of truth for this diagram: docs/design/machine-schema.md section 4
+    %% Referenced (linked, not embedded) from: docs/design/machine-schema.md
+    %% SCOPE: shows every event's effect from every state, including self-loops
+    %% where a lower-or-equal-severity event is blocked from lowering status
+    %% (machine-schema.md section 4.2). Multiple blocked/no-op reasons for the
+    %% same state are combined into one self-loop label rather than drawn as
+    %% separate stacked arrows, to keep the diagram legible.
+    %% STATUS_CHANGED is deliberately NOT drawn as 20 individual any-to-any
+    %% arrows — its rule ("always overwrites, bypasses ranking entirely") is
+    %% uniform across all states and adding 20 near-identical arrows would
+    %% drown out the more informative severity-based transitions above. It is
+    %% called out once via a note instead.
+    %% VERSIONING: update in place; do not fork per phase (see architecture.mmd).
+    [*] --> IDLE
+
+    IDLE --> RUNNING: PRODUCTION_COMPLETED
+    IDLE --> WARNING: TEMPERATURE_REPORTED (over threshold)
+    IDLE --> ERROR: ERROR_OCCURRED
+    IDLE --> MAINTENANCE: MAINTENANCE_REQUIRED
+
+    RUNNING --> RUNNING: PRODUCTION_COMPLETED (same rank)
+    RUNNING --> WARNING: TEMPERATURE_REPORTED (over threshold)
+    RUNNING --> ERROR: ERROR_OCCURRED
+    RUNNING --> MAINTENANCE: MAINTENANCE_REQUIRED
+
+    WARNING --> WARNING: TEMPERATURE_REPORTED (same rank) / PRODUCTION_COMPLETED (blocked, lower rank — healthScore delta still applies)
+    WARNING --> ERROR: ERROR_OCCURRED
+    WARNING --> MAINTENANCE: MAINTENANCE_REQUIRED
+
+    MAINTENANCE --> MAINTENANCE: TEMPERATURE_REPORTED (blocked) / MAINTENANCE_REQUIRED (same rank) / PRODUCTION_COMPLETED (blocked)
+    MAINTENANCE --> ERROR: ERROR_OCCURRED
+
+    ERROR --> ERROR: TEMPERATURE_REPORTED (blocked) / ERROR_OCCURRED (same rank) / MAINTENANCE_REQUIRED (blocked) / PRODUCTION_COMPLETED (blocked)
+
+    note right of ERROR
+        STATUS_CHANGED bypasses severity ranking
+        entirely: payload.currentStatus always
+        overwrites, moving ANY state to ANY other
+        state. It is the only way to recover a
+        machine from ERROR or MAINTENANCE back to
+        RUNNING/IDLE.
+    end note

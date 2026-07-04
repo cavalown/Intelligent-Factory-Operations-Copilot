@@ -6,6 +6,8 @@
 
 Instead, this document follows **one concrete event** through its entire lifecycle — the same `M-001` / `evt_temp_001` example already used in `docs/design/event-schema.md`, `docs/design/api.md`, and `docs/design/machine-schema.md` — showing the actual documents each module produces at each step. Use this document when you want to see the whole system react to a single event end to end; use `architecture.md` §9–10 when you want to understand the general shape of the flow.
 
+Sequence diagram source: [`docs/assets/mermaid/event-flow.mmd`](../assets/mermaid/event-flow.mmd) (covers §3 only — see that file's scope note).
+
 ---
 
 ## 2. Scenario Setup

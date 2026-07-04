@@ -42,6 +42,8 @@ This split matters for one reason: projection fields can always be rebuilt by re
 
 ## 4. Status Model
 
+State diagram source (covers §4.2–§4.3 in full, including blocked-transition self-loops): [`docs/assets/mermaid/machine-status-state.mmd`](../assets/mermaid/machine-status-state.mmd).
+
 ### 4.1 Allowed Statuses
 
 | Status | Meaning |

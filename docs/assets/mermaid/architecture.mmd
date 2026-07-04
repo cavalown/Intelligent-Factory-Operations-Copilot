@@ -1,0 +1,34 @@
+flowchart TD
+    %% System Architecture — High-Level Architecture
+    %% Source of truth for this diagram: docs/design/architecture.md section 5
+    %% Referenced (linked, not embedded) from: docs/design/architecture.md
+    %% SCOPE: this is the Phase 1 / MVP architecture snapshot, not a permanent
+    %% end-state diagram. architecture.md section 17 (Future Evolution)
+    %% describes additions per phase (new Kafka topics, RAG, agent workflows,
+    %% OPC UA/PLC, Digital Twin, etc.) that will change these nodes/edges.
+    %% VERSIONING: update this file in place when a later phase is actually
+    %% implemented — do not fork it into architecture-phase2.mmd etc. Git
+    %% history (`git log` / `git show <commit>:<path>`) is the record of what
+    %% earlier phases looked like, matching how architecture.md itself stays a
+    %% single living document rather than one file per phase.
+    Simulator["Machine Simulator"]
+    Kafka["Kafka<br/>topic: machine.events"]
+    Dashboard["Dashboard"]
+
+    subgraph Backend["IFOC Backend — NestJS Modular Monolith"]
+        EventService["Event Service"]
+        MachineService["Machine Service"]
+        AlertService["Alert Service"]
+        InsightService["Insight Service"]
+        APILayer["API Layer"]
+    end
+
+    Simulator -->|machine.events| Kafka
+    Kafka --> EventService
+    Kafka --> MachineService
+    Kafka --> AlertService
+    EventService --> InsightService
+    MachineService --> InsightService
+    AlertService --> InsightService
+    InsightService --> APILayer
+    APILayer --> Dashboard

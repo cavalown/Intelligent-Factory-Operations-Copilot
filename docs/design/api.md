@@ -282,6 +282,8 @@ If `eventId` duplicates a previously accepted event, the API still responds `202
 
 **Response `400`** — `INVALID_EVENT_ENVELOPE` if a required envelope field is missing or malformed.
 
+**Response `404`** — `UNKNOWN_MACHINE` if `machineId` does not match a pre-seeded machine. Machines are not auto-created from simulator events — see `docs/design/machine-schema.md` §11.
+
 **Response `422`** — `UNSUPPORTED_EVENT_TYPE` if `eventType` is not one of the MVP event types, or `PAYLOAD_VALIDATION_FAILED` if `payload` does not match the schema for the given `eventType`.
 
 ---
@@ -338,7 +340,8 @@ See `docs/design/event-schema.md` section 3 for the full envelope and section 5 
 | HTTP Status | Code | Meaning |
 | --- | --- | --- |
 | `400` | `INVALID_EVENT_ENVELOPE` | Request body is missing a required envelope field or a field has the wrong type. |
-| `404` | `MACHINE_NOT_FOUND` | The requested `machineId` does not exist. |
+| `404` | `MACHINE_NOT_FOUND` | The `:id` path parameter does not match an existing machine. |
+| `404` | `UNKNOWN_MACHINE` | `POST /simulator/events` body references a `machineId` that isn't pre-seeded. |
 | `404` | `SUMMARY_NOT_FOUND` | No AI summary has been generated for this machine yet. |
 | `422` | `UNSUPPORTED_EVENT_TYPE` | `eventType` is not a recognized MVP event type. |
 | `422` | `PAYLOAD_VALIDATION_FAILED` | `payload` does not match the schema required for `eventType`. |

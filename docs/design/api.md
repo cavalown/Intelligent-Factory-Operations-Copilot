@@ -78,7 +78,7 @@ Authentication and authorization are out of scope for the MVP (see `docs/product
 | Resource | Backed By | Description |
 | --- | --- | --- |
 | Machine | `machines` | Current machine state projection. |
-| Event | `machine_events` | Immutable event history for a machine. |
+| Event | `machine_events` | Immutable event history for a machine. Queryable per-machine (§4.3) or across all machines (§4.4). |
 | Alert | `alerts` | Problems derived from WARNING/CRITICAL events. |
 | AI Summary | `ai_summaries` | LLM-generated operational summary. |
 
@@ -167,7 +167,52 @@ Returns event history for a machine, most recent first, using cursor-based pagin
 
 ---
 
-### 4.4 `GET /machines/:id/alerts`
+### 4.4 `GET /events`
+
+Returns event history across all machines, most recent first, using the same cursor-based pagination as `GET /machines/:id/events` (§4.3). Added to support cross-machine views (Event Center, Dashboard's Recent Events) that don't scope to a single machine — see `docs/product/mvp.md` §Event Center.
+
+**Query Parameters**
+
+| Param | Type | Required | Description |
+| --- | --- | --- | --- |
+| `limit` | number | No | Max items to return. Default `20`, max `100`. |
+| `before` | string | No | Return events strictly older than this event's `eventId`. Used to page backward into history. |
+| `eventType` | string | No | Filter to a single event type, e.g. `TEMPERATURE_REPORTED`. |
+| `machineId` | string | No | Filter to a single machine. Equivalent to calling `GET /machines/:id/events` with that `machineId`. |
+
+**Response `200`** — same envelope shape as §4.3, with `data` spanning multiple machines when `machineId` is omitted:
+
+```json
+{
+  "data": [
+    {
+      "eventId": "evt_temp_001",
+      "eventType": "TEMPERATURE_REPORTED",
+      "schemaVersion": 1,
+      "source": "MACHINE_SIMULATOR",
+      "machineId": "M-001",
+      "occurredAt": "2026-07-02T10:30:00.000Z",
+      "producedAt": "2026-07-02T10:30:01.000Z",
+      "correlationId": "corr_demo_001",
+      "payload": {
+        "temperature": 95,
+        "unit": "C"
+      }
+    }
+  ],
+  "pagination": {
+    "limit": 20,
+    "nextCursor": "evt_temp_000",
+    "hasMore": true
+  }
+}
+```
+
+**Response `404`** — `MACHINE_NOT_FOUND` if a `machineId` filter is supplied and does not exist. Not applicable when `machineId` is omitted.
+
+---
+
+### 4.5 `GET /machines/:id/alerts`
 
 Returns alerts derived from this machine's events, most recent first.
 
@@ -200,7 +245,7 @@ Returns alerts derived from this machine's events, most recent first.
 
 ---
 
-### 4.5 `GET /machines/:id/summary`
+### 4.6 `GET /machines/:id/summary`
 
 Returns the most recently generated AI summary for a machine.
 
@@ -226,7 +271,7 @@ Returns the most recently generated AI summary for a machine.
 
 ---
 
-### 4.6 `POST /machines/:id/summary`
+### 4.7 `POST /machines/:id/summary`
 
 Triggers a new AI summary for a machine. The MVP calls the LLM synchronously and returns the generated summary in the response — there is no job queue or polling in the MVP.
 
@@ -244,7 +289,7 @@ Triggers a new AI summary for a machine. The MVP calls the LLM synchronously and
 
 ---
 
-### 4.7 `POST /simulator/events`
+### 4.8 `POST /simulator/events`
 
 Accepts a fully-formed machine event from the Machine Simulator and publishes it to the `machine.events` Kafka topic, keyed by `machineId`. The simulator is responsible for constructing the complete event envelope, including `eventId`, `occurredAt`, `producedAt`, `correlationId`, and `schemaVersion`, per `docs/design/event-schema.md`.
 

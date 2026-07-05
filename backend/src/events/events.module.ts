@@ -8,6 +8,7 @@ import {
 import { EventConsumerService } from './event-consumer.service';
 import { EventsService } from './events.service';
 import { EventsController } from './events.controller';
+import { EventsListController } from './events-list.controller';
 
 @Module({
   imports: [
@@ -16,7 +17,7 @@ import { EventsController } from './events.controller';
       { name: MachineEvent.name, schema: MachineEventSchema },
     ]),
   ],
-  controllers: [EventsController],
+  controllers: [EventsController, EventsListController],
   providers: [EventConsumerService, EventsService],
 })
 export class EventsModule {}

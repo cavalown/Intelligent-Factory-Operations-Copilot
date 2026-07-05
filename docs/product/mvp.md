@@ -71,17 +71,34 @@ Display detailed information for a single machine.
 
 ## Event Center
 
-Display operational events generated within the factory.
+Display operational events generated within the factory, across all machines.
 
 ### Requirements
 
-* Event Timeline
+* Event Timeline (cross-machine, most-recent-first)
 * Machine
 * Event Type
-* Severity
 * Timestamp
 
 Filtering is optional for the MVP.
+
+### Why There Is No Severity Column
+
+An earlier draft of this section included a `Severity` column. That was a mistake: severity is not a property of a raw event, it's Alert Service's *interpretation* of one (`docs/design/event-schema.md` §3.2 — `eventType`/`payload` are fact, `severity`/`alert`/`machine status` are interpretation). Not every event produces an interpretation either — a within-threshold `TEMPERATURE_REPORTED` or any `PRODUCTION_COMPLETED` never creates an alert (see the `Alert Rules` table below), so a "Severity" cell on those rows would have nothing to show.
+
+Attaching a derived severity to the raw event stream would also let alerting rules retroactively color historical events if those rules ever change (e.g. once Phase 2's Rule Engine exists), which breaks the fact/interpretation separation `event-schema.md` deliberately maintains.
+
+This mirrors how both industrial alarm management and mainstream observability tooling split the same concern into two distinct views:
+
+| Domain | Historical record (no severity) | Actionable / severity-bearing view |
+| --- | --- | --- |
+| Industrial (ISA-18.2 alarm management) | Event Log | Alarm List (has priority, ACK lifecycle) |
+| Datadog | Logs | Monitors |
+| Prometheus | Raw metrics | Alertmanager (rules attach `severity` label) |
+| PagerDuty | Events API | Incidents (has severity, ACK lifecycle) |
+| IFOC | **Event Center** (this section) | **Alerts** (`GET /machines/:id/alerts`, `docs/design/api.md` §4.4) |
+
+Event Center stays a plain, severity-free audit trail of everything that happened; `Event Type` alone is enough to color-code a row in the UI (e.g. `ERROR_OCCURRED` in red) without deriving anything. Anyone who needs "what currently needs attention, and how badly" should look at Alerts, not Event Center.
 
 ---
 

@@ -19,19 +19,27 @@ export class EventsService {
     private readonly machineEventModel: Model<MachineEventDocument>,
   ) {}
 
-  // docs/design/api.md §4.3 — most-recent-first, cursor-based pagination.
-  async listEventsForMachine(
-    machineId: string,
-    query: { limit?: string; before?: string; eventType?: string },
-  ) {
-    await this.assertMachineExists(machineId);
+  // docs/design/api.md §4.3/§4.4 — most-recent-first, cursor-based pagination,
+  // shared by the per-machine and cross-machine routes (design.md Decision 1).
+  async listEvents(query: {
+    machineId?: string;
+    limit?: string;
+    before?: string;
+    eventType?: string;
+  }) {
+    if (query.machineId) {
+      await this.assertMachineExists(query.machineId);
+    }
 
     const limit = Math.min(
       Math.max(Number(query.limit) || DEFAULT_LIMIT, 1),
       MAX_LIMIT,
     );
 
-    const filter: Record<string, unknown> = { machineId };
+    const filter: Record<string, unknown> = {};
+    if (query.machineId) {
+      filter.machineId = query.machineId;
+    }
     if (query.eventType) {
       filter.eventType = query.eventType;
     }

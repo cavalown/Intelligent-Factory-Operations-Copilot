@@ -1,19 +1,21 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Controller, Get, Query } from '@nestjs/common';
 import { EventsService } from './events.service';
 
-@Controller('machines/:id/events')
-export class EventsController {
+// Cross-machine event feed — docs/design/api.md §4.4. Shares EventsService
+// with EventsController (scoped to /machines/:id/events).
+@Controller('events')
+export class EventsListController {
   constructor(private readonly eventsService: EventsService) {}
 
   @Get()
   async getEvents(
-    @Param('id') id: string,
+    @Query('machineId') machineId?: string,
     @Query('limit') limit?: string,
     @Query('before') before?: string,
     @Query('eventType') eventType?: string,
   ) {
     return this.eventsService.listEvents({
-      machineId: id,
+      machineId,
       limit,
       before,
       eventType,

@@ -66,6 +66,8 @@ Transform the system into an event-driven platform.
 * Event Replay
 * WebSocket Real-time Update
 * Event History
+* Alert Acknowledgment & Resolution Workflow
+* Alert Escalation Rules (for unresolved critical alerts)
 
 ---
 
@@ -83,7 +85,11 @@ Convert factory data into operational knowledge.
 * Root Cause Analysis
 * Machine History
 * Maintenance History
-* Production Analytics
+* Production Analytics, including:
+  * Downtime Frequency Tracking
+  * Mean Time to Acknowledge / Resolve (MTTA / MTTR)
+  * Repeated Issue Pattern Analysis
+  * Bottleneck & High-Risk Equipment Identification
 
 ---
 
@@ -121,6 +127,21 @@ Connect the platform with real industrial environments.
 * 3D Factory View
 * Digital Twin Simulation
 * Multi-line Monitoring
+* Event Translation Layer — map vendor/company-specific event codes and severity levels onto the IFOC standard event schema (`docs/design/event-schema.md`), since real PLC/SCADA/MES sources won't natively emit IFOC's format
+
+---
+
+# Future Consideration (Not Yet Scoped) — Multi-Tenant SaaS Platform
+
+This is a placeholder, not a committed phase. Turning IFOC from a single-factory operations copilot into a product sold to multiple companies is a strategic positioning decision, not an incremental feature — it would require revisiting `CLAUDE.md`'s MVP scope boundaries (authentication and multi-tenant support are both explicitly excluded there) and needs its own dedicated discussion before it's placed in the sequential roadmap above.
+
+Rough shape, for future reference:
+
+* Tenant → factory → production line → machine hierarchy
+* Role-based access control
+* Per-tenant event code / severity mappings (builds on the Phase 5 Event Translation Layer)
+* Per-tenant alert rules
+* Separate document knowledge bases per tenant (builds on Phase 3's SOP Knowledge Base / RAG)
 
 ---
 

@@ -26,8 +26,6 @@ Four services, no Zookeeper — KRaft mode was chosen specifically to keep the l
 ## 3. `docker-compose.yml`
 
 ```yaml
-version: "3.9"
-
 services:
   kafka:
     image: apache/kafka:3.8.0
@@ -60,6 +58,7 @@ services:
   backend:
     build: ./backend
     container_name: ifoc-backend
+    restart: on-failure
     ports:
       - "3000:3000"
     environment:
@@ -95,6 +94,7 @@ volumes:
 * **Topic auto-creation**: `KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"` means `machine.events` is created automatically the first time a producer publishes to it. No init container or manual topic-creation step is required for the MVP.
 * **Partitions**: an auto-created topic gets the broker's default partition count (1, unless overridden). One partition is sufficient for MVP event volume and trivially preserves ordering. Keying messages by `machineId` (`event-schema.md` §8) is still correct practice even with one partition — if partition count increases later for throughput, per-machine ordering is preserved automatically without any producer/consumer code change.
 * **Internal vs. host addressing (dual listeners)**: Kafka exposes two separate listeners on purpose. `PLAINTEXT` (`kafka:9092`, advertised as `kafka:9092`) is for container-to-container traffic — this is what the containerized `backend` service uses. `PLAINTEXT_HOST` (`localhost:9093`, advertised as `localhost:9093`) is for anything connecting from the host machine — a local Kafka CLI, or a `backend` process run natively instead of in Docker (see `docs/deployment/local-development.md`). A single listener does not work for both cases: after the initial connection, a Kafka client reconnects using whatever address the broker *advertises*, and a host process cannot resolve the Docker-internal hostname `kafka`.
+* **Known cold-start race**: on a fresh `docker compose up --build backend`, all 3 of the backend's independent consumer groups (`event-service-group`, `machine-service-group`, `alert-service-group`) request the group coordinator from the single-broker cluster at once. This has been observed to occasionally throw an unretried `KafkaJSProtocolError` that crashes the backend process on its very first boot. `restart: on-failure` on the `backend` service (added in the Compose file above) recovers automatically — the retry always succeeds once the broker's coordinator metadata has settled. This is a single-broker-dev-cluster quirk, not an application bug.
 
 ---
 

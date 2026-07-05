@@ -133,7 +133,7 @@ Connect the platform with real industrial environments.
 
 # Future Consideration (Not Yet Scoped) — Multi-Tenant SaaS Platform
 
-This is a placeholder, not a committed phase. Turning IFOC from a single-factory operations copilot into a product sold to multiple companies is a strategic positioning decision, not an incremental feature — it would require revisiting `CLAUDE.md`'s MVP scope boundaries (authentication and multi-tenant support are both explicitly excluded there) and needs its own dedicated discussion before it's placed in the sequential roadmap above.
+This is a placeholder, not a committed phase. Turning IFOC from a single-factory operations copilot into a product sold to multiple companies is a strategic positioning decision, not an incremental feature — it would require revisiting the MVP scope boundaries (`ai/context/mvp-scope-boundaries.md`), which explicitly exclude authentication and multi-tenant support, and needs its own dedicated discussion before it's placed in the sequential roadmap above.
 
 Rough shape, for future reference:
 

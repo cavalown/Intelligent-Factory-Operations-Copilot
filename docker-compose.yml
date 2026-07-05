@@ -1,0 +1,64 @@
+version: "3.9"
+
+services:
+  kafka:
+    image: apache/kafka:3.8.0
+    container_name: ifoc-kafka
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:9093,CONTROLLER://0.0.0.0:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+
+  mongodb:
+    image: mongo:7
+    container_name: ifoc-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  # backend and frontend are commented out until backend/ and frontend/
+  # actually exist with Dockerfiles — `build: ./backend` / `build: ./frontend`
+  # will fail otherwise. Uncomment once those projects are scaffolded.
+  # See docs/deployment/docker-compose.md §3 for the full intended spec.
+
+  # backend:
+  #   build: ./backend
+  #   container_name: ifoc-backend
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     PORT: 3000
+  #     MONGODB_URI: mongodb://mongodb:27017/ifoc
+  #     KAFKA_BROKERS: kafka:9092
+  #     KAFKA_TOPIC_MACHINE_EVENTS: machine.events
+  #     LLM_API_KEY: ${LLM_API_KEY}
+  #   depends_on:
+  #     - kafka
+  #     - mongodb
+
+  # frontend:
+  #   build: ./frontend
+  #   container_name: ifoc-frontend
+  #   ports:
+  #     - "5173:5173"
+  #   environment:
+  #     VITE_API_BASE_URL: http://localhost:3000/api
+  #   depends_on:
+  #     - backend
+
+volumes:
+  kafka_data:
+  mongo_data:

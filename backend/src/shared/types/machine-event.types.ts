@@ -1,6 +1,4 @@
 // Event envelope and payload types matching docs/design/event-schema.md.
-// This change implements TEMPERATURE_REPORTED only; the other MVP event types
-// are added by a follow-up change (see ai/skills/add-mvp-event-type.md).
 
 export const MVP_EVENT_TYPES = [
   'STATUS_CHANGED',
@@ -12,13 +10,16 @@ export const MVP_EVENT_TYPES = [
 
 export type MvpEventType = (typeof MVP_EVENT_TYPES)[number];
 
-// The subset of event types this change actually validates and processes.
-export const IMPLEMENTED_EVENT_TYPES = ['TEMPERATURE_REPORTED'] as const;
+// All 5 MVP event types are implemented as of this change.
+export const IMPLEMENTED_EVENT_TYPES = MVP_EVENT_TYPES;
 export type ImplementedEventType = (typeof IMPLEMENTED_EVENT_TYPES)[number];
 
-export interface MachineEventEnvelope<TPayload = unknown> {
+export interface MachineEventEnvelope<
+  TEventType extends MvpEventType = MvpEventType,
+  TPayload = unknown,
+> {
   eventId: string;
-  eventType: MvpEventType;
+  eventType: TEventType;
   schemaVersion: number;
   source: string;
   machineId: string;
@@ -28,11 +29,66 @@ export interface MachineEventEnvelope<TPayload = unknown> {
   payload: TPayload;
 }
 
+// docs/design/event-schema.md §5.1
+export interface StatusChangedPayload {
+  previousStatus?: string;
+  currentStatus: string;
+  reason?: string;
+}
+
+export type StatusChangedEvent = MachineEventEnvelope<
+  'STATUS_CHANGED',
+  StatusChangedPayload
+>;
+
 // docs/design/event-schema.md §5.2
 export interface TemperatureReportedPayload {
   temperature: number;
   unit: string;
 }
 
-export type TemperatureReportedEvent =
-  MachineEventEnvelope<TemperatureReportedPayload>;
+export type TemperatureReportedEvent = MachineEventEnvelope<
+  'TEMPERATURE_REPORTED',
+  TemperatureReportedPayload
+>;
+
+// docs/design/event-schema.md §5.3
+export interface ErrorOccurredPayload {
+  errorCode: string;
+  errorMessage: string;
+  recoverable?: boolean;
+}
+
+export type ErrorOccurredEvent = MachineEventEnvelope<
+  'ERROR_OCCURRED',
+  ErrorOccurredPayload
+>;
+
+// docs/design/event-schema.md §5.4
+export interface MaintenanceRequiredPayload {
+  maintenanceType: string;
+  reason: string;
+}
+
+export type MaintenanceRequiredEvent = MachineEventEnvelope<
+  'MAINTENANCE_REQUIRED',
+  MaintenanceRequiredPayload
+>;
+
+// docs/design/event-schema.md §5.5
+export interface ProductionCompletedPayload {
+  quantity: number;
+  batchId?: string;
+}
+
+export type ProductionCompletedEvent = MachineEventEnvelope<
+  'PRODUCTION_COMPLETED',
+  ProductionCompletedPayload
+>;
+
+export type MachineEvent =
+  | StatusChangedEvent
+  | TemperatureReportedEvent
+  | ErrorOccurredEvent
+  | MaintenanceRequiredEvent
+  | ProductionCompletedEvent;

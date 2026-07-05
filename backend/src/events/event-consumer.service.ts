@@ -5,7 +5,10 @@ import { Model } from 'mongoose';
 import { KAFKA_CLIENT } from '../shared/kafka/kafka-client.provider';
 import { KafkaConsumerBase } from '../shared/kafka/kafka-consumer.base';
 import { env } from '../shared/config/env.config';
-import { MachineEvent, MachineEventDocument } from './schemas/machine-event.schema';
+import {
+  MachineEvent,
+  MachineEventDocument,
+} from './schemas/machine-event.schema';
 
 // Event Service: stores every consumed event as immutable history.
 // Own consumer group per ai/rules/kafka-consumer-conventions.md.
@@ -21,7 +24,9 @@ export class EventConsumerService extends KafkaConsumerBase {
     super(kafka, 'event-service-group', env.kafkaTopicMachineEvents);
   }
 
-  protected async handleMessage({ message }: EachMessagePayload): Promise<void> {
+  protected async handleMessage({
+    message,
+  }: EachMessagePayload): Promise<void> {
     if (!message.value) return;
     const event = JSON.parse(message.value.toString());
 

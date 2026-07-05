@@ -5,7 +5,9 @@ import { Consumer, EachMessagePayload, Kafka } from 'kafkajs';
 // ai/rules/kafka-consumer-conventions.md. Each subclass (Event/Machine/Alert
 // Service) passes its own groupId and gets a fully independent subscription
 // to the topic — none of them share a group, so each sees every message.
-export abstract class KafkaConsumerBase implements OnModuleInit, OnModuleDestroy {
+export abstract class KafkaConsumerBase
+  implements OnModuleInit, OnModuleDestroy
+{
   private readonly consumer: Consumer;
 
   protected constructor(

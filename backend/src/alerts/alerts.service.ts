@@ -29,10 +29,7 @@ export class AlertsService {
       filter.status = status;
     }
 
-    const alerts = await this.alertModel
-      .find(filter)
-      .sort({ _id: -1 })
-      .exec();
+    const alerts = await this.alertModel.find(filter).sort({ _id: -1 }).exec();
 
     return { data: alerts.map((a) => this.toResponse(a)) };
   }

@@ -104,11 +104,11 @@ healthScore = clamp(healthScore + delta, 0, 100)
 | `TEMPERATURE_REPORTED` | Within threshold | `0` (no delta) |
 | `ERROR_OCCURRED` | — | `-30` |
 | `MAINTENANCE_REQUIRED` | — | `-20` |
-| `STATUS_CHANGED` | `payload.reason` indicates sensor failure and `currentStatus == WARNING` | `-15` |
-| `STATUS_CHANGED` | Any other transition | `0` (no delta) |
+| `STATUS_CHANGED` | `currentStatus == WARNING` | `-15` |
+| `STATUS_CHANGED` | Any other `currentStatus` | `0` (no delta) |
 | `PRODUCTION_COMPLETED` | — | `+2` |
 
-This matches the Machine State Rules table in `CLAUDE.md`. The `STATUS_CHANGED` / sensor-failure row and the "otherwise no delta" rows are this document's extension, needed because `STATUS_CHANGED` is a general-purpose event and CLAUDE.md only defines a delta for its sensor-failure case.
+This matches the Machine State Rules table in `CLAUDE.md`. The `STATUS_CHANGED` / `WARNING` row and the "otherwise no delta" row are this document's extension, needed because `STATUS_CHANGED` is a general-purpose event and CLAUDE.md only defines a delta for its sensor-failure case. **MVP rule**: any `STATUS_CHANGED` event that sets `currentStatus` to `WARNING` is treated as the sensor-failure case — there is no separate inspection of `payload.reason` text, since `reason` is freeform and no other `STATUS_CHANGED` transition to `WARNING` is defined in MVP scope.
 
 **Health score deltas are independent of the §4.2 status-ranking rule.** A `PRODUCTION_COMPLETED` event always applies `+2`, even on a machine currently in `ERROR` whose status the event is not allowed to downgrade. Status and health score are separate fields updated by separate rules.
 
@@ -140,7 +140,7 @@ function applyEvent(machine, event):
 
         STATUS_CHANGED:
             machine.status = event.payload.currentStatus
-            if isSensorFailure(event.payload.reason) and event.payload.currentStatus == "WARNING":
+            if event.payload.currentStatus == "WARNING":
                 machine.healthScore = clamp(machine.healthScore - 15)
 
         TEMPERATURE_REPORTED:

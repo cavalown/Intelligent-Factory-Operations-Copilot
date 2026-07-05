@@ -6,9 +6,9 @@ import { Model } from 'mongoose';
 import { KAFKA_CLIENT } from '../shared/kafka/kafka-client.provider';
 import { KafkaConsumerBase } from '../shared/kafka/kafka-consumer.base';
 import { env } from '../shared/config/env.config';
-import { TemperatureReportedEvent } from '../shared/types/machine-event.types';
+import { MachineEvent } from '../shared/types/machine-event.types';
 import { MachinesService } from '../machines/machines.service';
-import { Alert, AlertDocument } from './schemas/alert.schema';
+import { Alert, AlertDocument, AlertSeverity } from './schemas/alert.schema';
 
 // Alert Service: derives alert severity from event type + payload, per the
 // Alert Rules table (CLAUDE.md / ai/context/alert-rules.md /
@@ -31,28 +31,19 @@ export class AlertConsumerService extends KafkaConsumerBase {
     message,
   }: EachMessagePayload): Promise<void> {
     if (!message.value) return;
-    const event = JSON.parse(
-      message.value.toString(),
-    ) as TemperatureReportedEvent;
+    const event = JSON.parse(message.value.toString()) as MachineEvent;
 
-    // This change only implements TEMPERATURE_REPORTED — see
-    // ai/skills/add-mvp-event-type.md for adding the rest.
-    if (event.eventType !== 'TEMPERATURE_REPORTED') return;
-
-    const machine = await this.machinesService.findRaw(event.machineId);
-    if (!machine) return;
-
-    const { temperature } = event.payload;
-    if (temperature <= machine.temperatureThreshold) return;
+    const alert = await this.resolveAlert(event);
+    if (!alert) return;
 
     try {
       await this.alertModel.create({
         alertId: `alert_${randomUUID()}`,
         machineId: event.machineId,
         eventId: event.eventId,
-        severity: 'WARNING',
+        severity: alert.severity,
         status: 'ACTIVE',
-        message: `Temperature ${temperature}${event.payload.unit} exceeds warning threshold.`,
+        message: alert.message,
         createdAt: event.producedAt,
         resolvedAt: null,
       });
@@ -62,6 +53,45 @@ export class AlertConsumerService extends KafkaConsumerBase {
         return;
       }
       throw err;
+    }
+  }
+
+  // docs/design/architecture.md §9.3 — returns null when no alert should be created.
+  private async resolveAlert(
+    event: MachineEvent,
+  ): Promise<{ severity: AlertSeverity; message: string } | null> {
+    switch (event.eventType) {
+      case 'STATUS_CHANGED': {
+        // MVP rule (design.md Decision 1 of remaining-mvp-event-types):
+        // any STATUS_CHANGED to WARNING is treated as sensor failure.
+        if (event.payload.currentStatus !== 'WARNING') return null;
+        return {
+          severity: 'WARNING',
+          message: `Machine status changed to WARNING: ${event.payload.reason ?? 'no reason given'}.`,
+        };
+      }
+      case 'TEMPERATURE_REPORTED': {
+        const machine = await this.machinesService.findRaw(event.machineId);
+        if (!machine) return null;
+        const { temperature, unit } = event.payload;
+        if (temperature <= machine.temperatureThreshold) return null;
+        return {
+          severity: 'WARNING',
+          message: `Temperature ${temperature}${unit} exceeds warning threshold.`,
+        };
+      }
+      case 'ERROR_OCCURRED':
+        return {
+          severity: 'CRITICAL',
+          message: `Error ${event.payload.errorCode}: ${event.payload.errorMessage}`,
+        };
+      case 'MAINTENANCE_REQUIRED':
+        return {
+          severity: 'WARNING',
+          message: `Maintenance required (${event.payload.maintenanceType}): ${event.payload.reason}`,
+        };
+      case 'PRODUCTION_COMPLETED':
+        return null;
     }
   }
 

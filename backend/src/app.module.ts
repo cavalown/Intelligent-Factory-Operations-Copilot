@@ -9,7 +9,14 @@ import { SimulatorModule } from './simulator/simulator.module';
 import { SharedModule } from './shared/shared.module';
 
 @Module({
-  imports: [EventsModule, MachinesModule, AlertsModule, InsightsModule, SimulatorModule, SharedModule],
+  imports: [
+    EventsModule,
+    MachinesModule,
+    AlertsModule,
+    InsightsModule,
+    SimulatorModule,
+    SharedModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })

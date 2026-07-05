@@ -5,7 +5,7 @@ import { ApiError } from '../shared/errors/api-error';
 import { env } from '../shared/config/env.config';
 import {
   IMPLEMENTED_EVENT_TYPES,
-  TemperatureReportedEvent,
+  MachineEvent,
 } from '../shared/types/machine-event.types';
 
 // docs/design/event-schema.md §9.1 (correlationId is optional).
@@ -51,9 +51,9 @@ export class SimulatorService {
       );
     }
 
-    this.validateTemperatureReportedPayload(body.payload);
+    this.validatePayload(eventType, body.payload);
 
-    const event = body as unknown as TemperatureReportedEvent;
+    const event = body as unknown as MachineEvent;
     await this.kafkaProducer.publish(
       env.kafkaTopicMachineEvents,
       machineId,
@@ -75,6 +75,33 @@ export class SimulatorService {
     }
   }
 
+  // docs/design/event-schema.md §9.2
+  private validatePayload(eventType: string, payload: unknown): void {
+    switch (eventType) {
+      case 'STATUS_CHANGED':
+        return this.validateStatusChangedPayload(payload);
+      case 'TEMPERATURE_REPORTED':
+        return this.validateTemperatureReportedPayload(payload);
+      case 'ERROR_OCCURRED':
+        return this.validateErrorOccurredPayload(payload);
+      case 'MAINTENANCE_REQUIRED':
+        return this.validateMaintenanceRequiredPayload(payload);
+      case 'PRODUCTION_COMPLETED':
+        return this.validateProductionCompletedPayload(payload);
+    }
+  }
+
+  private validateStatusChangedPayload(payload: unknown): void {
+    const p = (payload ?? {}) as Record<string, unknown>;
+    if (typeof p.currentStatus !== 'string') {
+      throw new ApiError(
+        HttpStatus.UNPROCESSABLE_ENTITY,
+        'PAYLOAD_VALIDATION_FAILED',
+        'STATUS_CHANGED payload requires a string currentStatus.',
+      );
+    }
+  }
+
   private validateTemperatureReportedPayload(payload: unknown): void {
     const p = (payload ?? {}) as Record<string, unknown>;
     if (typeof p.temperature !== 'number' || typeof p.unit !== 'string') {
@@ -82,6 +109,39 @@ export class SimulatorService {
         HttpStatus.UNPROCESSABLE_ENTITY,
         'PAYLOAD_VALIDATION_FAILED',
         'TEMPERATURE_REPORTED payload requires a numeric temperature and string unit.',
+      );
+    }
+  }
+
+  private validateErrorOccurredPayload(payload: unknown): void {
+    const p = (payload ?? {}) as Record<string, unknown>;
+    if (typeof p.errorCode !== 'string' || typeof p.errorMessage !== 'string') {
+      throw new ApiError(
+        HttpStatus.UNPROCESSABLE_ENTITY,
+        'PAYLOAD_VALIDATION_FAILED',
+        'ERROR_OCCURRED payload requires a string errorCode and errorMessage.',
+      );
+    }
+  }
+
+  private validateMaintenanceRequiredPayload(payload: unknown): void {
+    const p = (payload ?? {}) as Record<string, unknown>;
+    if (typeof p.maintenanceType !== 'string' || typeof p.reason !== 'string') {
+      throw new ApiError(
+        HttpStatus.UNPROCESSABLE_ENTITY,
+        'PAYLOAD_VALIDATION_FAILED',
+        'MAINTENANCE_REQUIRED payload requires a string maintenanceType and reason.',
+      );
+    }
+  }
+
+  private validateProductionCompletedPayload(payload: unknown): void {
+    const p = (payload ?? {}) as Record<string, unknown>;
+    if (typeof p.quantity !== 'number') {
+      throw new ApiError(
+        HttpStatus.UNPROCESSABLE_ENTITY,
+        'PAYLOAD_VALIDATION_FAILED',
+        'PRODUCTION_COMPLETED payload requires a numeric quantity.',
       );
     }
   }

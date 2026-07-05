@@ -1,28 +1,4 @@
-# machine-event-ingestion Specification
-
-## Purpose
-TBD - created by archiving change backend-walking-skeleton. Update Purpose after archive.
-## Requirements
-### Requirement: Accept and publish a valid TEMPERATURE_REPORTED event
-The system SHALL validate an incoming event envelope and its `TEMPERATURE_REPORTED` payload against `docs/design/event-schema.md`, and SHALL publish valid events to the `machine.events` Kafka topic keyed by `machineId`.
-
-#### Scenario: Valid event is published
-- **WHEN** a client POSTs a well-formed `TEMPERATURE_REPORTED` event envelope for an existing machine to `/simulator/events`
-- **THEN** the system publishes the event to the `machine.events` topic keyed by `machineId` and responds `202 Accepted` with `{ eventId, status: "PUBLISHED" }`
-
-### Requirement: Reject an invalid envelope
-The system SHALL reject a request whose envelope is missing a required field, without publishing to Kafka.
-
-#### Scenario: Missing required envelope field
-- **WHEN** a client POSTs an event envelope missing a required field (e.g. `occurredAt`)
-- **THEN** the system responds `400` with error code `INVALID_EVENT_ENVELOPE` and does not publish to Kafka
-
-### Requirement: Reject an unknown machine
-The system SHALL reject an event referencing a `machineId` that has not been pre-seeded, without publishing to Kafka.
-
-#### Scenario: Unknown machineId
-- **WHEN** a client POSTs a valid event envelope for a `machineId` that does not exist in the `machines` collection
-- **THEN** the system responds `404` with error code `UNKNOWN_MACHINE` and does not publish to Kafka
+## MODIFIED Requirements
 
 ### Requirement: Reject an unsupported event type
 The system SHALL reject any `eventType` outside the 5 MVP event types (`STATUS_CHANGED`, `TEMPERATURE_REPORTED`, `ERROR_OCCURRED`, `MAINTENANCE_REQUIRED`, `PRODUCTION_COMPLETED`), without publishing to Kafka.
@@ -54,6 +30,8 @@ The system SHALL reject any event whose payload does not match the required sche
 - **WHEN** a client POSTs a `PRODUCTION_COMPLETED` event whose payload is missing `quantity`
 - **THEN** the system responds `422` with error code `PAYLOAD_VALIDATION_FAILED` and does not publish to Kafka
 
+## ADDED Requirements
+
 ### Requirement: Accept and publish a valid STATUS_CHANGED event
 The system SHALL validate an incoming event envelope and its `STATUS_CHANGED` payload against `docs/design/event-schema.md`, and SHALL publish valid events to the `machine.events` Kafka topic keyed by `machineId`.
 
@@ -81,4 +59,3 @@ The system SHALL validate an incoming event envelope and its `PRODUCTION_COMPLET
 #### Scenario: Valid event is published
 - **WHEN** a client POSTs a well-formed `PRODUCTION_COMPLETED` event envelope for an existing machine to `/simulator/events`
 - **THEN** the system publishes the event to the `machine.events` topic keyed by `machineId` and responds `202 Accepted` with `{ eventId, status: "PUBLISHED" }`
-

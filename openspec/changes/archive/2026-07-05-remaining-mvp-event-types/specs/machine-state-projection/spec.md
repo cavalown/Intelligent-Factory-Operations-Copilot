@@ -1,21 +1,4 @@
-# machine-state-projection Specification
-
-## Purpose
-TBD - created by archiving change backend-walking-skeleton. Update Purpose after archive.
-## Requirements
-### Requirement: Update projection when temperature exceeds threshold
-The system SHALL, upon consuming a `TEMPERATURE_REPORTED` event whose `payload.temperature` exceeds the machine's `temperatureThreshold`, raise the machine's `status` to `WARNING` (subject to severity precedence) and decrease `healthScore` by 10, clamped to `[0, 100]`, per `docs/design/machine-schema.md` §4-§5.
-
-#### Scenario: Temperature over threshold raises status and lowers health score
-- **WHEN** Machine Service consumes a `TEMPERATURE_REPORTED` event for `M-001` with `temperature` above `M-001`'s `temperatureThreshold`, and `M-001`'s current status has severity rank at or below `WARNING`
-- **THEN** `M-001`'s `status` becomes `WARNING`, `healthScore` decreases by 10 (clamped at 0), `currentTemperature` is set to the reported value, and `lastEventId`/`lastUpdatedAt` are updated
-
-### Requirement: No status or health-score change when within threshold
-The system SHALL update only `currentTemperature`, `lastEventId`, and `lastUpdatedAt` when a reported temperature is within threshold.
-
-#### Scenario: Temperature within threshold only updates telemetry
-- **WHEN** Machine Service consumes a `TEMPERATURE_REPORTED` event for a machine with `temperature` at or below its `temperatureThreshold`
-- **THEN** the machine's `status` and `healthScore` remain unchanged, but `currentTemperature`, `lastEventId`, and `lastUpdatedAt` are updated
+## MODIFIED Requirements
 
 ### Requirement: Severity precedence is enforced
 The system SHALL NOT lower a machine's status to a lower-severity value via `TEMPERATURE_REPORTED`, `ERROR_OCCURRED`, `MAINTENANCE_REQUIRED`, or `PRODUCTION_COMPLETED` events. The system SHALL always set `machine.status` to `payload.currentStatus` when consuming a `STATUS_CHANGED` event, regardless of the current status's severity rank — this is the only event type permitted to downgrade status, per `docs/design/machine-schema.md` §4.2.
@@ -28,27 +11,7 @@ The system SHALL NOT lower a machine's status to a lower-severity value via `TEM
 - **WHEN** Machine Service consumes a `STATUS_CHANGED` event with `payload.currentStatus: "RUNNING"` for a machine currently in `ERROR` status
 - **THEN** the machine's `status` becomes `RUNNING`
 
-### Requirement: Idempotent on immediately-repeated eventId
-The system SHALL NOT re-apply a status/health-score change for an `eventId` matching the machine's current `lastEventId`.
-
-#### Scenario: Repeated eventId does not double-apply
-- **WHEN** Machine Service consumes an event whose `eventId` matches the machine's current `lastEventId`
-- **THEN** it does not reapply the status/healthScore change a second time
-
-### Requirement: Machine state is queryable
-The system SHALL expose `GET /machines` and `GET /machines/:id` returning the current machine projection, per `docs/design/api.md` §4.1-4.2.
-
-#### Scenario: List all machines
-- **WHEN** a client GETs `/machines`
-- **THEN** the system returns the current projection for every seeded machine
-
-#### Scenario: Get one machine
-- **WHEN** a client GETs `/machines/M-001`
-- **THEN** the system returns `M-001`'s current projection
-
-#### Scenario: Unknown machine returns 404
-- **WHEN** a client GETs `/machines/:id` for a `machineId` that does not exist
-- **THEN** the system responds `404` with error code `MACHINE_NOT_FOUND`
+## ADDED Requirements
 
 ### Requirement: Apply STATUS_CHANGED health-score rule
 The system SHALL, upon consuming a `STATUS_CHANGED` event whose `payload.currentStatus` is `WARNING`, decrease `healthScore` by 15, clamped to `[0, 100]`. Per this change's design decision, any `STATUS_CHANGED` event that sets `currentStatus` to `WARNING` is treated as the "sensor failure" case referenced in `docs/design/machine-schema.md` §7, with no inspection of `payload.reason` text. Any other `currentStatus` value results in no health-score change from this event.
@@ -85,4 +48,3 @@ The system SHALL, upon consuming a `PRODUCTION_COMPLETED` event, raise the machi
 #### Scenario: Production event does not downgrade a higher-severity status
 - **WHEN** Machine Service consumes a `PRODUCTION_COMPLETED` event for a machine currently in `ERROR` status
 - **THEN** the machine's `status` remains `ERROR`, but `healthScore` still increases by 2 and `productionCount` still increases by `payload.quantity`
-

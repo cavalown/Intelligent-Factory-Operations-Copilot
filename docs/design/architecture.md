@@ -763,6 +763,8 @@ Recommended extraction order:
 
 The key is that service extraction should follow real pressure, not happen only for architectural appearance.
 
+**This is a reference option, not a commitment.** IFOC is currently a side project without production traffic or multiple teams, so the pressure conditions above are unlikely to ever actually occur — that's a realistic expectation, not a shortcut being taken because it's "only" a side project. The same pressure-driven rule applies universally: plenty of real production systems stay monoliths indefinitely because they never hit these thresholds either. Splitting is warranted by actual pressure, regardless of whether the project is a side project or a company product. Future modules — including the Phase 5 Event Translation Layer discussed in `docs/product/product-roadmap.md` — should default to living in this same modular monolith unless a concrete pressure from this list actually shows up.
+
 ---
 
 ## 15. Consistency and Reliability

@@ -1,16 +1,13 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
+import { MACHINE_STATUSES } from '../../shared/types/machine-status.types';
+import type { MachineStatus } from '../../shared/types/machine-status.types';
 
-// Matches docs/design/machine-schema.md §3.
-export const MACHINE_STATUSES = [
-  'RUNNING',
-  'IDLE',
-  'WARNING',
-  'ERROR',
-  'MAINTENANCE',
-] as const;
-
-export type MachineStatus = (typeof MACHINE_STATUSES)[number];
+// Re-exported so existing in-module imports (`./schemas/machine.schema`)
+// keep working — canonical definition now lives in shared/ since simulator/
+// also needs it. See shared/types/machine-status.types.ts.
+export { MACHINE_STATUSES };
+export type { MachineStatus };
 
 export type MachineDocument = HydratedDocument<Machine>;
 
@@ -27,7 +24,12 @@ export class Machine {
   temperatureThreshold: number;
 
   // Projection fields — derived from machine_events, per machine-schema.md §4-§7.
-  @Prop({ required: true, enum: MACHINE_STATUSES, default: 'IDLE' })
+  @Prop({
+    type: String,
+    required: true,
+    enum: MACHINE_STATUSES,
+    default: 'IDLE',
+  })
   status: MachineStatus;
 
   @Prop({ required: true, min: 0, max: 100, default: 100 })

@@ -4,9 +4,10 @@ import { KafkaProducerService } from '../shared/kafka/kafka-producer.service';
 import { ApiError } from '../shared/errors/api-error';
 import { env } from '../shared/config/env.config';
 import {
-  IMPLEMENTED_EVENT_TYPES,
+  MVP_EVENT_TYPES,
   MachineEvent,
 } from '../shared/types/machine-event.types';
+import { MACHINE_STATUSES } from '../shared/types/machine-status.types';
 
 // docs/design/event-schema.md §9.1 (correlationId is optional).
 const REQUIRED_ENVELOPE_FIELDS = [
@@ -43,7 +44,7 @@ export class SimulatorService {
     }
 
     const eventType = body.eventType as string;
-    if (!(IMPLEMENTED_EVENT_TYPES as readonly string[]).includes(eventType)) {
+    if (!(MVP_EVENT_TYPES as readonly string[]).includes(eventType)) {
       throw new ApiError(
         HttpStatus.UNPROCESSABLE_ENTITY,
         'UNSUPPORTED_EVENT_TYPE',
@@ -73,6 +74,13 @@ export class SimulatorService {
         );
       }
     }
+    if (!Number.isFinite(body.schemaVersion)) {
+      throw new ApiError(
+        HttpStatus.BAD_REQUEST,
+        'INVALID_EVENT_ENVELOPE',
+        'schemaVersion must be a finite number.',
+      );
+    }
   }
 
   // docs/design/event-schema.md §9.2
@@ -93,11 +101,14 @@ export class SimulatorService {
 
   private validateStatusChangedPayload(payload: unknown): void {
     const p = (payload ?? {}) as Record<string, unknown>;
-    if (typeof p.currentStatus !== 'string') {
+    if (
+      typeof p.currentStatus !== 'string' ||
+      !(MACHINE_STATUSES as readonly string[]).includes(p.currentStatus)
+    ) {
       throw new ApiError(
         HttpStatus.UNPROCESSABLE_ENTITY,
         'PAYLOAD_VALIDATION_FAILED',
-        'STATUS_CHANGED payload requires a string currentStatus.',
+        `STATUS_CHANGED payload requires currentStatus to be one of: ${MACHINE_STATUSES.join(', ')}.`,
       );
     }
   }

@@ -10,10 +10,6 @@ export const MVP_EVENT_TYPES = [
 
 export type MvpEventType = (typeof MVP_EVENT_TYPES)[number];
 
-// All 5 MVP event types are implemented as of this change.
-export const IMPLEMENTED_EVENT_TYPES = MVP_EVENT_TYPES;
-export type ImplementedEventType = (typeof IMPLEMENTED_EVENT_TYPES)[number];
-
 export interface MachineEventEnvelope<
   TEventType extends MvpEventType = MvpEventType,
   TPayload = unknown,

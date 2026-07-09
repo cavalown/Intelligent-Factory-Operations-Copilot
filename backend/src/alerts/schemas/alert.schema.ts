@@ -23,10 +23,15 @@ export class Alert {
   @Prop({ required: true, unique: true })
   eventId: string;
 
-  @Prop({ required: true, enum: ALERT_SEVERITIES })
+  @Prop({ type: String, required: true, enum: ALERT_SEVERITIES })
   severity: AlertSeverity;
 
-  @Prop({ required: true, enum: ALERT_STATUSES, default: 'ACTIVE' })
+  @Prop({
+    type: String,
+    required: true,
+    enum: ALERT_STATUSES,
+    default: 'ACTIVE',
+  })
   status: AlertStatus;
 
   @Prop({ required: true })

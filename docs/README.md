@@ -55,6 +55,15 @@ Short records of why a significant technical choice was made.
 
 `design/architecture.md` §18 keeps a condensed one-line-per-decision summary table; these ADR files are the full context, alternatives, and consequences behind each row.
 
+## Retrospectives
+
+Postmortems on real implementation mistakes and their root causes — not ADRs (which record why a choice was made), but why a mistake was made, so it isn't repeated.
+
+| Doc | Status | Description |
+| --- | --- | --- |
+| [`retrospectives/README.md`](retrospectives/README.md) | ✅ | Index and criteria for adding a retrospective. |
+| [`retrospectives/2026-07-backend-implementation-lessons.md`](retrospectives/2026-07-backend-implementation-lessons.md) | ✅ | 5 root-cause patterns from 3 `/code-review` rounds and one architectural reversal during the initial backend build. |
+
 ## Deployment
 
 | Doc | Status | Description |

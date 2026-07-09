@@ -60,7 +60,7 @@ Transform the system into an event-driven platform.
 ### Features
 
 * Kafka Event Streaming
-* Rule Engine
+* Rule Engine *(also unifies event interpretation logic currently duplicated across Machine Service and Alert Service — see `docs/design/machine-schema.md` §5.4)*
 * Incident Management
 * Notification Center
 * Event Replay

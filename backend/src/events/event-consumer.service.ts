@@ -1,10 +1,11 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { EachMessagePayload, Kafka } from 'kafkajs';
 import { Model } from 'mongoose';
 import { KAFKA_CLIENT } from '../shared/kafka/kafka-client.provider';
 import { KafkaConsumerBase } from '../shared/kafka/kafka-consumer.base';
 import { env } from '../shared/config/env.config';
+import { isDuplicateKeyError } from '../shared/database/mongo-error.util';
 import {
   MachineEvent,
   MachineEventDocument,
@@ -14,8 +15,6 @@ import {
 // Own consumer group per ai/rules/kafka-consumer-conventions.md.
 @Injectable()
 export class EventConsumerService extends KafkaConsumerBase {
-  private readonly logger = new Logger(EventConsumerService.name);
-
   constructor(
     @Inject(KAFKA_CLIENT) kafka: Kafka,
     @InjectModel(MachineEvent.name)
@@ -33,19 +32,11 @@ export class EventConsumerService extends KafkaConsumerBase {
     try {
       await this.machineEventModel.create(event);
     } catch (err: unknown) {
-      if (this.isDuplicateKeyError(err)) {
+      if (isDuplicateKeyError(err)) {
         // Already stored — idempotent no-op, per machine-schema.md §8.
         return;
       }
       throw err;
     }
-  }
-
-  private isDuplicateKeyError(err: unknown): boolean {
-    return (
-      typeof err === 'object' &&
-      err !== null &&
-      (err as { code?: number }).code === 11000
-    );
   }
 }

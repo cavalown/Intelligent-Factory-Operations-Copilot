@@ -1,14 +1,25 @@
 import { randomUUID } from 'node:crypto';
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { EachMessagePayload, Kafka } from 'kafkajs';
 import { Model } from 'mongoose';
 import { KAFKA_CLIENT } from '../shared/kafka/kafka-client.provider';
 import { KafkaConsumerBase } from '../shared/kafka/kafka-consumer.base';
 import { env } from '../shared/config/env.config';
+import { isDuplicateKeyError } from '../shared/database/mongo-error.util';
 import { MachineEvent } from '../shared/types/machine-event.types';
 import { MachinesService } from '../machines/machines.service';
 import { Alert, AlertDocument, AlertSeverity } from './schemas/alert.schema';
+
+// MVP rule (design.md Decision 1 of remaining-mvp-event-types): any
+// STATUS_CHANGED to WARNING is treated as sensor failure. Deliberately not
+// shared with machine-projection-consumer.service.ts's identically-named
+// function — see docs/design/machine-schema.md §5.4 and
+// openspec/changes/duplicate-logic-cleanup/design.md Decision 2. A contract
+// test asserts the two stay in agreement.
+export function isStatusChangedSensorFailure(currentStatus: string): boolean {
+  return currentStatus === 'WARNING';
+}
 
 // Alert Service: derives alert severity from event type + payload, per the
 // Alert Rules table (CLAUDE.md / ai/context/alert-rules.md /
@@ -16,8 +27,6 @@ import { Alert, AlertDocument, AlertSeverity } from './schemas/alert.schema';
 // ai/rules/kafka-consumer-conventions.md.
 @Injectable()
 export class AlertConsumerService extends KafkaConsumerBase {
-  private readonly logger = new Logger(AlertConsumerService.name);
-
   constructor(
     @Inject(KAFKA_CLIENT) kafka: Kafka,
     private readonly machinesService: MachinesService,
@@ -48,7 +57,7 @@ export class AlertConsumerService extends KafkaConsumerBase {
         resolvedAt: null,
       });
     } catch (err: unknown) {
-      if (this.isDuplicateKeyError(err)) {
+      if (isDuplicateKeyError(err)) {
         // Already created for this eventId — idempotent no-op.
         return;
       }
@@ -62,18 +71,23 @@ export class AlertConsumerService extends KafkaConsumerBase {
   ): Promise<{ severity: AlertSeverity; message: string } | null> {
     switch (event.eventType) {
       case 'STATUS_CHANGED': {
-        // MVP rule (design.md Decision 1 of remaining-mvp-event-types):
-        // any STATUS_CHANGED to WARNING is treated as sensor failure.
-        if (event.payload.currentStatus !== 'WARNING') return null;
+        if (!isStatusChangedSensorFailure(event.payload.currentStatus))
+          return null;
         return {
           severity: 'WARNING',
           message: `Machine status changed to WARNING: ${event.payload.reason ?? 'no reason given'}.`,
         };
       }
       case 'TEMPERATURE_REPORTED': {
+        const { temperature, unit } = event.payload;
+        if (!Number.isFinite(temperature)) {
+          this.logger.warn(
+            `Skipping non-finite temperature for event ${event.eventId}`,
+          );
+          return null;
+        }
         const machine = await this.machinesService.findRaw(event.machineId);
         if (!machine) return null;
-        const { temperature, unit } = event.payload;
         if (temperature <= machine.temperatureThreshold) return null;
         return {
           severity: 'WARNING',
@@ -92,14 +106,11 @@ export class AlertConsumerService extends KafkaConsumerBase {
         };
       case 'PRODUCTION_COMPLETED':
         return null;
+      default:
+        this.logger.warn(
+          `Skipping unrecognized eventType for event ${(event as MachineEvent).eventId}`,
+        );
+        return null;
     }
-  }
-
-  private isDuplicateKeyError(err: unknown): boolean {
-    return (
-      typeof err === 'object' &&
-      err !== null &&
-      (err as { code?: number }).code === 11000
-    );
   }
 }

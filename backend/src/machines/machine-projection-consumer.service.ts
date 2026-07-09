@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { EachMessagePayload, Kafka } from 'kafkajs';
 import { Model } from 'mongoose';
@@ -13,12 +13,20 @@ import {
 } from './schemas/machine.schema';
 import { clampHealthScore, raiseSeverity } from './machine-status.util';
 
+// MVP rule (design.md Decision 1 of remaining-mvp-event-types): any
+// STATUS_CHANGED to WARNING is treated as sensor failure. Deliberately not
+// shared with alert-consumer.service.ts's identically-named function — see
+// docs/design/machine-schema.md §5.4 and
+// openspec/changes/duplicate-logic-cleanup/design.md Decision 2. A contract
+// test asserts the two stay in agreement.
+export function isStatusChangedSensorFailure(currentStatus: string): boolean {
+  return currentStatus === 'WARNING';
+}
+
 // Machine Service: projects events into current machine state.
 // Own consumer group per ai/rules/kafka-consumer-conventions.md.
 @Injectable()
 export class MachineProjectionConsumerService extends KafkaConsumerBase {
-  private readonly logger = new Logger(MachineProjectionConsumerService.name);
-
   constructor(
     @Inject(KAFKA_CLIENT) kafka: Kafka,
     @InjectModel(Machine.name)
@@ -46,15 +54,19 @@ export class MachineProjectionConsumerService extends KafkaConsumerBase {
       case 'STATUS_CHANGED': {
         const currentStatus = event.payload.currentStatus as MachineStatus;
         machine.status = currentStatus;
-        // MVP rule (design.md Decision 1 of remaining-mvp-event-types):
-        // any STATUS_CHANGED to WARNING is treated as sensor failure.
-        if (currentStatus === 'WARNING') {
+        if (isStatusChangedSensorFailure(currentStatus)) {
           machine.healthScore = clampHealthScore(machine.healthScore - 15);
         }
         break;
       }
       case 'TEMPERATURE_REPORTED': {
         const { temperature } = event.payload;
+        if (!Number.isFinite(temperature)) {
+          this.logger.warn(
+            `Skipping non-finite temperature for event ${event.eventId}`,
+          );
+          break;
+        }
         machine.currentTemperature = temperature;
         if (temperature > machine.temperatureThreshold) {
           machine.status = raiseSeverity(machine.status, 'WARNING');
@@ -75,9 +87,22 @@ export class MachineProjectionConsumerService extends KafkaConsumerBase {
       case 'PRODUCTION_COMPLETED': {
         machine.status = raiseSeverity(machine.status, 'RUNNING');
         machine.healthScore = clampHealthScore(machine.healthScore + 2);
-        machine.productionCount += event.payload.quantity;
+        if (Number.isFinite(event.payload.quantity)) {
+          machine.productionCount += event.payload.quantity;
+        } else {
+          this.logger.warn(
+            `Skipping non-numeric quantity for event ${event.eventId}`,
+          );
+        }
         break;
       }
+      default:
+        // Unrecognized eventType — skip entirely, don't mark as processed.
+        // See openspec/changes/archive/2026-07-08-kafka-consumer-reliability-hardening/design.md.
+        this.logger.warn(
+          `Skipping unrecognized eventType for event ${(event as MachineEvent).eventId}`,
+        );
+        return;
     }
 
     machine.lastEventId = event.eventId;

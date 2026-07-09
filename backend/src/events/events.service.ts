@@ -31,10 +31,10 @@ export class EventsService {
       await this.assertMachineExists(query.machineId);
     }
 
-    const limit = Math.min(
-      Math.max(Number(query.limit) || DEFAULT_LIMIT, 1),
-      MAX_LIMIT,
-    );
+    const parsedLimit =
+      query.limit !== undefined ? Number(query.limit) : DEFAULT_LIMIT;
+    const rawLimit = Number.isFinite(parsedLimit) ? parsedLimit : DEFAULT_LIMIT;
+    const limit = Math.min(Math.max(rawLimit, 1), MAX_LIMIT);
 
     const filter: Record<string, unknown> = {};
     if (query.machineId) {

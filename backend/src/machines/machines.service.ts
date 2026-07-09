@@ -21,17 +21,29 @@ export class MachinesService {
   async getMachine(machineId: string) {
     const machine = await this.machineModel.findOne({ machineId }).exec();
     if (!machine) {
-      throw new ApiError(
-        HttpStatus.NOT_FOUND,
-        'MACHINE_NOT_FOUND',
-        `Machine ${machineId} was not found.`,
-      );
+      throw this.notFound(machineId);
     }
     return this.toResponse(machine);
   }
 
   async exists(machineId: string): Promise<boolean> {
     return (await this.machineModel.exists({ machineId })) !== null;
+  }
+
+  // Single owner of the MACHINE_NOT_FOUND guard — other modules call this
+  // instead of copying the exists+throw block (docs/design/api.md §6).
+  async assertExists(machineId: string): Promise<void> {
+    if (!(await this.exists(machineId))) {
+      throw this.notFound(machineId);
+    }
+  }
+
+  private notFound(machineId: string): ApiError {
+    return new ApiError(
+      HttpStatus.NOT_FOUND,
+      'MACHINE_NOT_FOUND',
+      `Machine ${machineId} was not found.`,
+    );
   }
 
   // For other modules' consumers that need machine fields (e.g. threshold)

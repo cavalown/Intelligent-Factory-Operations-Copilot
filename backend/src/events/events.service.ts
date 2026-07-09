@@ -1,8 +1,7 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { MachinesService } from '../machines/machines.service';
-import { ApiError } from '../shared/errors/api-error';
 import {
   MachineEvent,
   MachineEventDocument,
@@ -28,9 +27,23 @@ export class EventsService {
     eventType?: string;
   }) {
     if (query.machineId) {
-      await this.assertMachineExists(query.machineId);
+      await this.machinesService.assertExists(query.machineId);
     }
+    return this.queryEvents(query);
+  }
 
+  // Internal read for consumers that have already validated machine existence
+  // (Insight Service context gathering) — skips the redundant exists() query.
+  async listEventsUnchecked(query: { machineId?: string; limit?: string }) {
+    return this.queryEvents(query);
+  }
+
+  private async queryEvents(query: {
+    machineId?: string;
+    limit?: string;
+    before?: string;
+    eventType?: string;
+  }) {
     const parsedLimit =
       query.limit !== undefined ? Number(query.limit) : DEFAULT_LIMIT;
     const rawLimit = Number.isFinite(parsedLimit) ? parsedLimit : DEFAULT_LIMIT;
@@ -70,17 +83,6 @@ export class EventsService {
         hasMore,
       },
     };
-  }
-
-  private async assertMachineExists(machineId: string): Promise<void> {
-    const exists = await this.machinesService.exists(machineId);
-    if (!exists) {
-      throw new ApiError(
-        HttpStatus.NOT_FOUND,
-        'MACHINE_NOT_FOUND',
-        `Machine ${machineId} was not found.`,
-      );
-    }
   }
 
   private toResponse(e: MachineEventDocument) {

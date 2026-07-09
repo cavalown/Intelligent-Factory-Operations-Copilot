@@ -19,5 +19,7 @@ import { EventsListController } from './events-list.controller';
   ],
   controllers: [EventsController, EventsListController],
   providers: [EventConsumerService, EventsService],
+  // Consumed by the Insight Service's context gatherer (add-insights-module design D2).
+  exports: [EventsService],
 })
 export class EventsModule {}

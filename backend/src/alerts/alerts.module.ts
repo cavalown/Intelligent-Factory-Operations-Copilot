@@ -13,5 +13,7 @@ import { AlertsController } from './alerts.controller';
   ],
   controllers: [AlertsController],
   providers: [AlertConsumerService, AlertsService],
+  // Consumed by the Insight Service's context gatherer (add-insights-module design D2).
+  exports: [AlertsService],
 })
 export class AlertsModule {}

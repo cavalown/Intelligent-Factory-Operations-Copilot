@@ -38,7 +38,10 @@ services:
       MONGODB_URI: mongodb://mongodb:27017/ifoc
       KAFKA_BROKERS: kafka:9092
       KAFKA_TOPIC_MACHINE_EVENTS: machine.events
-      LLM_API_KEY: ${LLM_API_KEY}
+      # mock = built-in no-key provider; see docs/deployment/docker-compose.md §5
+      LLM_PROVIDER: ${LLM_PROVIDER:-mock}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-}
     depends_on:
       - kafka
       - mongodb

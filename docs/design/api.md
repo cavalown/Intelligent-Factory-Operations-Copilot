@@ -333,6 +333,43 @@ If `eventId` duplicates a previously accepted event, the API still responds `202
 
 ---
 
+### 4.9 `GET /summary`
+
+Returns the most recently generated factory-scope AI summary — the data source for the Dashboard's AI Summary Card. Mirrors §4.6 with `scope: "FACTORY"` and no `machineId`. Added by the `add-insights-module` change (2026-07-10); the `scope` field anticipated this.
+
+**Response `200`**
+
+```json
+{
+  "summaryId": "summary_002",
+  "scope": "FACTORY",
+  "inputEventIds": ["evt_prod_098", "evt_temp_001"],
+  "summary": "Two machines are running normally. M-001 reported a temperature above its warning threshold; no critical errors across the factory.",
+  "recommendedActions": [
+    "Check M-001's cooling system airflow.",
+    "Monitor factory-wide temperature trend for the next cycle."
+  ],
+  "model": "gpt-4.1",
+  "createdAt": "2026-07-02T10:32:00.000Z"
+}
+```
+
+**Response `404`** — `SUMMARY_NOT_FOUND` if no factory-scope summary has ever been generated.
+
+---
+
+### 4.10 `POST /summary`
+
+Triggers a new factory-scope AI summary. Mirrors §4.7: the MVP calls the LLM synchronously and returns the generated summary — no job queue or polling. The context gathered covers all machines' current state, recent cross-machine events, and active alerts.
+
+**Request Body** — none required.
+
+**Response `200`** — the newly created summary, same shape as `GET /summary`.
+
+**Response `502`** — `LLM_CALL_FAILED`, with the same advisory-feature isolation as §4.7.
+
+---
+
 ## 5. Data Models
 
 ### 5.1 Machine
@@ -370,8 +407,8 @@ See `docs/design/event-schema.md` section 3 for the full envelope and section 5 
 | Field | Type | Description |
 | --- | --- | --- |
 | `summaryId` | string | Summary identifier. |
-| `machineId` | string | Machine this summary describes. |
-| `scope` | string | `MACHINE` in the MVP. Reserved for future `FACTORY`-level scope. |
+| `machineId` | string | Machine this summary describes. Present only when `scope` is `MACHINE`. |
+| `scope` | string | `MACHINE` (per-machine summary, §4.6–4.7) or `FACTORY` (whole-factory summary, §4.9–4.10). |
 | `inputEventIds` | string[] | Events used to generate this summary, for traceability. |
 | `summary` | string | LLM-generated operational summary text. |
 | `recommendedActions` | string[] | LLM-suggested next steps. |
@@ -387,7 +424,7 @@ See `docs/design/event-schema.md` section 3 for the full envelope and section 5 
 | `400` | `INVALID_EVENT_ENVELOPE` | Request body is missing a required envelope field or a field has the wrong type. |
 | `404` | `MACHINE_NOT_FOUND` | The `:id` path parameter does not match an existing machine. |
 | `404` | `UNKNOWN_MACHINE` | `POST /simulator/events` body references a `machineId` that isn't pre-seeded. |
-| `404` | `SUMMARY_NOT_FOUND` | No AI summary has been generated for this machine yet. |
+| `404` | `SUMMARY_NOT_FOUND` | No AI summary has been generated yet for this machine (§4.6) or for the factory (§4.9). |
 | `422` | `UNSUPPORTED_EVENT_TYPE` | `eventType` is not a recognized MVP event type. |
 | `422` | `PAYLOAD_VALIDATION_FAILED` | `payload` does not match the schema required for `eventType`. |
 | `502` | `LLM_CALL_FAILED` | The Insight Service could not reach the LLM API. |

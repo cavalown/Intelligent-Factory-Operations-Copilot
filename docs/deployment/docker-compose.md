@@ -105,7 +105,9 @@ volumes:
 | `MONGODB_URI` | `backend` | MongoDB connection string. |
 | `KAFKA_BROKERS` | `backend` | Kafka bootstrap server address. |
 | `KAFKA_TOPIC_MACHINE_EVENTS` | `backend` | Topic name, kept as a variable rather than hardcoded so `docs/design/event-schema.md` §8's naming convention can evolve without a code change. |
-| `LLM_API_KEY` | `backend` | Credential for the Insight Service's LLM API calls (`architecture.md` §7.6). Not committed — supplied via a local `.env` file or shell environment. |
+| `LLM_PROVIDER` | `backend` | Which Insight Service LLM adapter to use. Defaults to `mock` (built-in, no API key needed) so local dev and the demo run without external credentials; an unknown value fails startup fast. |
+| `LLM_API_KEY` | `backend` | Credential for the Insight Service's LLM API calls (`architecture.md` §7.6). Not committed — supplied via a local `.env` file or shell environment. Unused by the `mock` provider. |
+| `LLM_MODEL` | `backend` | Model identifier passed to the configured LLM provider. Unused by the `mock` provider. |
 | `VITE_API_BASE_URL` | `frontend` | Base URL the dashboard uses to reach the backend, matching `docs/design/api.md` §2.1. |
 
 `LLM_API_KEY` should be provided through a local `.env` file (gitignored) or the shell environment — never committed to the repository.

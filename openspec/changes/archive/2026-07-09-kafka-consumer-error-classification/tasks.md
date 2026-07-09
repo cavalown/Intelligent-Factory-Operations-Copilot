@@ -21,4 +21,4 @@
 ## 4. OpenSpec Closeout
 
 - [x] 4.1 Run `openspec validate kafka-consumer-error-classification --strict` and confirm it passes
-- [ ] 4.2 Archive the change once all tasks above are complete and verified
+- [x] 4.2 Archive the change once all tasks above are complete and verified

@@ -46,4 +46,4 @@
 ## 7. OpenSpec Closeout
 
 - [x] 7.1 Run `openspec validate duplicate-logic-cleanup --strict` and confirm it passes
-- [ ] 7.2 Archive the change once all tasks above are complete and verified
+- [x] 7.2 Archive the change once all tasks above are complete and verified

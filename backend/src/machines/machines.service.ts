@@ -2,7 +2,8 @@ import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { ApiError } from '../shared/errors/api-error';
-import { Machine, MachineDocument } from './schemas/machine.schema';
+import { Machine, MachineDocument, MACHINE_STATUSES } from './schemas/machine.schema';
+import type { MachineStatus } from './schemas/machine.schema';
 
 @Injectable()
 export class MachinesService {
@@ -51,6 +52,45 @@ export class MachinesService {
   // than throwing — consumers should skip silently on an unknown machine.
   async findRaw(machineId: string): Promise<MachineDocument | null> {
     return this.machineModel.findOne({ machineId }).exec();
+  }
+
+  // docs/design/api.md — GET /dashboard/stats (add-frontend-mvp design D4).
+  // One aggregation over the projection; statusCounts is always zero-filled
+  // for all five statuses so clients never branch on missing keys.
+  async getDashboardStats() {
+    const [row] = await this.machineModel.aggregate<{
+      machineCount: number;
+      totalProductionCount: number;
+      averageHealthScore: number;
+      statuses: MachineStatus[];
+    }>([
+      {
+        $group: {
+          _id: null,
+          machineCount: { $sum: 1 },
+          totalProductionCount: { $sum: '$productionCount' },
+          averageHealthScore: { $avg: '$healthScore' },
+          statuses: { $push: '$status' },
+        },
+      },
+    ]);
+
+    const statusCounts = Object.fromEntries(
+      MACHINE_STATUSES.map((s) => [s, 0]),
+    ) as Record<MachineStatus, number>;
+    for (const status of row?.statuses ?? []) {
+      statusCounts[status] += 1;
+    }
+
+    return {
+      machineCount: row?.machineCount ?? 0,
+      statusCounts,
+      totalProductionCount: row?.totalProductionCount ?? 0,
+      averageHealthScore:
+        row === undefined
+          ? null
+          : Math.round(row.averageHealthScore * 10) / 10,
+    };
   }
 
   private toResponse(m: MachineDocument) {

@@ -46,16 +46,16 @@ services:
       - kafka
       - mongodb
 
-  # frontend is still commented out — frontend/ doesn't exist yet.
-  # frontend:
-  #   build: ./frontend
-  #   container_name: ifoc-frontend
-  #   ports:
-  #     - "5173:5173"
-  #   environment:
-  #     VITE_API_BASE_URL: http://localhost:3000/api
-  #   depends_on:
-  #     - backend
+  frontend:
+    build: ./frontend
+    container_name: ifoc-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      # The browser (not the container) calls this URL — api.md §2.1.
+      VITE_API_BASE_URL: http://localhost:3000/api
+    depends_on:
+      - backend
 
 volumes:
   kafka_data:

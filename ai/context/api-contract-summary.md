@@ -9,6 +9,7 @@ GET  /machines/:id/summary
 POST /machines/:id/summary    # triggers LLM call
 GET  /summary                 # factory-scope AI summary (Dashboard card)
 POST /summary                 # triggers factory-scope LLM call
+GET  /dashboard/stats         # machine counts by status, production, avg health
 POST /simulator/events        # publishes event to Kafka
 ```
 

@@ -370,6 +370,31 @@ Triggers a new factory-scope AI summary. Mirrors §4.7: the MVP calls the LLM sy
 
 ---
 
+### 4.11 `GET /dashboard/stats`
+
+Returns the factory-wide aggregate the Dashboard's stat tiles render, computed from the `machines` projection. Added by the `add-frontend-mvp` change (2026-07-10) so the aggregate lives behind the API from day one instead of being client-side arithmetic that would silently stop scaling.
+
+**Response `200`**
+
+```json
+{
+  "machineCount": 3,
+  "statusCounts": {
+    "RUNNING": 1,
+    "IDLE": 0,
+    "WARNING": 1,
+    "ERROR": 0,
+    "MAINTENANCE": 1
+  },
+  "totalProductionCount": 145,
+  "averageHealthScore": 62.7
+}
+```
+
+`statusCounts` always contains all five statuses, zero-filled. On an empty machines collection, `machineCount` is `0` and `averageHealthScore` is `null`. The dashboard's "Critical Machines" tile maps to `statusCounts.ERROR`.
+
+---
+
 ## 5. Data Models
 
 ### 5.1 Machine

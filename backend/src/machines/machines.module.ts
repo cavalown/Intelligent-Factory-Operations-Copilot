@@ -5,12 +5,13 @@ import { MachineSeedService } from './machine-seed.service';
 import { MachineProjectionConsumerService } from './machine-projection-consumer.service';
 import { MachinesService } from './machines.service';
 import { MachinesController } from './machines.controller';
+import { DashboardController } from './dashboard.controller';
 
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: Machine.name, schema: MachineSchema }]),
   ],
-  controllers: [MachinesController],
+  controllers: [MachinesController, DashboardController],
   providers: [
     MachineSeedService,
     MachineProjectionConsumerService,

@@ -63,6 +63,7 @@ Postmortems on real implementation mistakes and their root causes — not ADRs (
 | --- | --- | --- |
 | [`retrospectives/README.md`](retrospectives/README.md) | ✅ | Index and criteria for adding a retrospective. |
 | [`retrospectives/2026-07-backend-implementation-lessons.md`](retrospectives/2026-07-backend-implementation-lessons.md) | ✅ | 5 root-cause patterns from 3 `/code-review` rounds and one architectural reversal during the initial backend build. |
+| [`retrospectives/2026-07-dashboard-metrics-review-lessons.md`](retrospectives/2026-07-dashboard-metrics-review-lessons.md) | ✅ | 4 root-cause patterns from the dashboard-operational-metrics review: secondary-write-on-critical-path × poison-pill classification, compounding assumptions on weakly-validated fields, stale doc registries, silent degraded modes. |
 
 ## Deployment
 

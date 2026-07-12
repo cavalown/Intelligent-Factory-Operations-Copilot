@@ -7,6 +7,7 @@ This is a different kind of document from `docs/decisions/` (ADRs record *why a 
 | Doc | Description |
 | --- | --- |
 | [`2026-07-backend-implementation-lessons.md`](2026-07-backend-implementation-lessons.md) | 3 rounds of `/code-review` during the initial backend build, and one full architectural reversal (Kafka consumer retry logic). 5 root-cause patterns, most involving verification methodology, not raw coding mistakes. |
+| [`2026-07-dashboard-metrics-review-lessons.md`](2026-07-dashboard-metrics-review-lessons.md) | The `/code-review` pass on the dashboard-operational-metrics change (10 confirmed findings). 4 root-cause patterns, headlined by a secondary write on the primary projection's critical path interacting with the poison-pill classifier to permanently lose events — two individually-correct mechanisms composing destructively. |
 
 ## When to add one
 

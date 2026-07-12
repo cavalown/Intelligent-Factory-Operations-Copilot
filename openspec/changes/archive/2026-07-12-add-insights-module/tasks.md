@@ -10,7 +10,7 @@
 
 - [x] 2.1 Define `LlmClient` interface + DI token in `insights/llm/llm-client.ts` (`generateSummary(prompt) → { summary, recommendedActions, model }`)
 - [x] 2.2 Implement the first concrete adapter — **built-in `mock` provider** (real-provider choice deferred by user, see design D3 implementation note); no API key, deterministic output
-- [ ] 2.2b Follow-up: implement a real provider adapter (with hard HTTP timeout, unparseable output treated as failure) once the provider is chosen — required for the MVP DoD's "AI Summary is generated from recent events"
+- [x] 2.2b Follow-up: implement a real provider adapter — **resolved by deferral (2026-07-12): user decided no paid LLM API before Phase 3**; the mock provider ships as Phase 1's AI summary (demo-appropriate one-shot trigger), and the real adapter lands at Phase 3 entry (RAG needs a real LLM anyway). The `LlmClient` interface + env switching already make that a one-file addition. See design.md Open Question 4 and docs/product/product-roadmap.md Phase 3.
 - [x] 2.3 Provide `LLM_CLIENT` in `InsightsModule` via an env-driven factory; fail fast at startup on unknown `LLM_PROVIDER` naming the invalid value and supported providers
 
 ## 3. Insights Pipeline

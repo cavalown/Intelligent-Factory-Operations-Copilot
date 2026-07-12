@@ -79,6 +79,7 @@ Convert factory data into operational knowledge.
 
 ### Features
 
+* Real LLM provider hookup (decided 2026-07-12: Phase 1/2 ship with the built-in `mock` provider — no paid API spending before this phase; the `LlmClient` interface and env switching are already in place, so this is one adapter file at phase entry, and RAG below requires it anyway)
 * SOP Knowledge Base
 * RAG
 * Event Search

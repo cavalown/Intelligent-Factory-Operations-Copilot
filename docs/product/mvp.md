@@ -242,7 +242,7 @@ The MVP is considered complete when:
 * Consumer processes all events.
 * Events are persisted in MongoDB.
 * Machine status is updated correctly.
-* AI Summary is generated from recent events.
+* AI Summary is generated from recent events. (Phase 1 verified with the mock provider; real LLM at Phase 3 — see `docs/product/product-roadmap.md` Phase 3.)
 * The entire demo can be completed without manual data modification.
 
 ---

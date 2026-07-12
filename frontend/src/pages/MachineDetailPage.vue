@@ -13,13 +13,20 @@ import {
 import { ApiError } from '../api/client';
 import { getMachine, getUtilization } from '../api/machines';
 import { listEvents } from '../api/events';
-import { formatDuration } from '../format';
+import { formatDuration, formatTimestamp } from '../format';
+import { useViewport } from '../composables/useViewport';
 import AiSummaryCard from '../components/AiSummaryCard.vue';
 import EventsTable from '../components/EventsTable.vue';
 import MachineStatusTag from '../components/MachineStatusTag.vue';
 
 const route = useRoute();
 const machineId = computed(() => String(route.params.id));
+const { isPhone, isTablet } = useViewport();
+
+// 1 / 2 / 3 description columns by band (add-responsive-ui design D5)
+const descriptionColumns = computed(() =>
+  isPhone.value ? 1 : isTablet.value ? 2 : 3,
+);
 
 const machineQuery = useQuery({
   queryKey: computed(() => ['machine', machineId.value]),
@@ -63,7 +70,11 @@ const notFound = computed(
   <template v-else>
     <NCard :title="machineQuery.data.value?.name ?? machineId" size="small">
       <NSkeleton v-if="machineQuery.isLoading.value" text :repeat="3" />
-      <NDescriptions v-else-if="machineQuery.data.value" :column="3" size="small">
+      <NDescriptions
+        v-else-if="machineQuery.data.value"
+        :column="descriptionColumns"
+        size="small"
+      >
         <NDescriptionsItem label="Status">
           <MachineStatusTag :status="machineQuery.data.value.status" />
         </NDescriptionsItem>
@@ -84,11 +95,7 @@ const notFound = computed(
           {{ machineQuery.data.value.machineId }}
         </NDescriptionsItem>
         <NDescriptionsItem label="Last Updated">
-          {{
-            machineQuery.data.value.lastUpdatedAt === null
-              ? '—'
-              : new Date(machineQuery.data.value.lastUpdatedAt).toLocaleString()
-          }}
+          {{ formatTimestamp(machineQuery.data.value.lastUpdatedAt) }}
         </NDescriptionsItem>
       </NDescriptions>
       <div v-if="utilizationQuery.data.value" class="utilization-strip">
@@ -121,6 +128,7 @@ const notFound = computed(
 }
 .detail-events {
   flex: 3;
+  min-width: 0; /* let the inner table scroll instead of forcing row width */
 }
 .detail-summary {
   flex: 2;
@@ -129,5 +137,19 @@ const notFound = computed(
   margin-top: 12px;
   font-size: 13px;
   color: rgba(0, 0, 0, 0.6);
+}
+/* Below the tablet breakpoint the side-by-side row stacks (design D5).
+   Range syntax matches useViewport's complementary bands; canonical
+   breakpoint values live in ai/rules/frontend-responsive.md */
+@media (width < 1024px) {
+  .detail-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .detail-events,
+  .detail-summary {
+    flex: none;
+    width: 100%;
+  }
 }
 </style>

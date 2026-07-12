@@ -5,7 +5,13 @@ export const router = createRouter({
   routes: [
     { path: '/', name: 'dashboard', component: () => import('./pages/DashboardPage.vue') },
     { path: '/machines', name: 'machines', component: () => import('./pages/MachineListPage.vue') },
-    { path: '/machines/:id', name: 'machine-detail', component: () => import('./pages/MachineDetailPage.vue') },
+    {
+      path: '/machines/:id',
+      name: 'machine-detail',
+      component: () => import('./pages/MachineDetailPage.vue'),
+      // Which nav item this route highlights (see navigation.ts activeNavKey)
+      meta: { navKey: 'machines' },
+    },
     { path: '/events', name: 'events', component: () => import('./pages/EventCenterPage.vue') },
     { path: '/simulator', name: 'simulator', component: () => import('./pages/SimulatorPage.vue') },
   ],

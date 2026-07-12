@@ -25,3 +25,4 @@ Tool-agnostic AI-agent guidance for IFOC (Intelligent Factory Operations Copilot
 | [openspec-first.md](rules/openspec-first.md) | Non-trivial changes get an OpenSpec proposal before implementation. |
 | [communication-language.md](rules/communication-language.md) | Reply to the user in Traditional Chinese; written artifacts stay English. |
 | [research-before-building.md](rules/research-before-building.md) | Check whether a library already solves an infra problem before hand-rolling it; verify cross-boundary design claims, don't assert them. |
+| [frontend-responsive.md](rules/frontend-responsive.md) | Every frontend change considers phone/tablet/desktop behavior at design time; established breakpoints and patterns. |

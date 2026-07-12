@@ -66,8 +66,12 @@ function drillDown(filter?: MachineStatus) {
 </script>
 
 <template>
+  <!-- Phone: 2 tiles per row (span 3 of 6) — stacked full-width KPI tiles
+       waste a whole screen; pairs read like a mobile app (design 3.4).
+       Tablet: 3 per row (s:2) — deliberate, user decision 2026-07-13:
+       tablets read like large phones, denser KPI rows preferred. -->
   <NGrid :cols="6" :x-gap="12" :y-gap="12" item-responsive responsive="screen">
-    <NGridItem v-for="tile in tiles" :key="tile.label" span="6 s:3 m:1">
+    <NGridItem v-for="tile in tiles" :key="tile.label" span="3 s:2 m:1">
       <NCard
         size="small"
         :class="{ 'tile-clickable': tile.filter !== undefined }"
@@ -86,7 +90,7 @@ function drillDown(filter?: MachineStatus) {
     responsive="screen"
     style="margin-top: 12px"
   >
-    <NGridItem v-for="tile in last24hTiles" :key="tile.label" span="4 s:2 m:1">
+    <NGridItem v-for="tile in last24hTiles" :key="tile.label" span="2 s:2 m:1">
       <NCard size="small">
         <NStatistic :label="tile.label" :value="tile.value ?? '—'" />
       </NCard>
@@ -116,12 +120,27 @@ function drillDown(filter?: MachineStatus) {
 }
 .dashboard-events {
   flex: 3;
+  min-width: 0; /* let the inner table scroll instead of forcing row width */
 }
 .dashboard-side {
   flex: 2;
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+/* Below the tablet breakpoint the side-by-side row stacks (design D5).
+   Range syntax matches useViewport's complementary bands; canonical
+   breakpoint values live in ai/rules/frontend-responsive.md */
+@media (width < 1024px) {
+  .dashboard-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .dashboard-events,
+  .dashboard-side {
+    flex: none;
+    width: 100%;
+  }
 }
 .tile-clickable {
   cursor: pointer;

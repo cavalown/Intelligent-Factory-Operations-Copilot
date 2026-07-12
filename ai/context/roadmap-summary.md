@@ -5,6 +5,8 @@ IFOC evolves through 5 phases. **The MVP being built right now is Phase 1.** Ful
 | Phase | Name | Goal |
 | --- | --- | --- |
 | 1 | Factory Foundation | Core factory monitoring platform (current MVP) |
+| 1.1 | Observability Foundation | OpenTelemetry traces/metrics + structured logs with trace correlation, shipped to a single `grafana/otel-lgtm` demo container (added 2026-07-12; demo-weight by design — no production deployment intent) |
+| 1.2 | Responsive Operator UI | Tablet/phone layouts for the five pages (bottom tabs, card lists, stacked columns; Naive UI breakpoints) without desktop regression; standing rule `ai/rules/frontend-responsive.md` applies to all future frontend work (added 2026-07-12) |
 | 2 | Event Streaming | Rule engine, incident management, event replay, WebSocket, **alert acknowledgment/resolution workflow, alert escalation rules** |
 | 3 | Operational Intelligence | **Real LLM provider hookup (Phases 1–2 deliberately ship the `mock` provider — no paid API before Phase 3)**, SOP knowledge base, RAG, event search, root cause analysis, **concrete production analytics (downtime frequency, MTTA/MTTR, repeated-issue patterns, bottleneck identification)** |
 | 4 | AI Copilot | AI chat, recommendations, predictive maintenance |

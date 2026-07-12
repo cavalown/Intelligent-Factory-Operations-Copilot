@@ -13,6 +13,7 @@ import {
 } from 'naive-ui';
 import { ApiError } from '../api/client';
 import { generateSummary, getSummary } from '../api/summaries';
+import { formatTimestamp } from '../format';
 
 // Advisory feature, three states (add-frontend-mvp design D6):
 // loaded summary / 404 → generate CTA / 502 → inline error + retry.
@@ -92,7 +93,7 @@ const generateError = computed(() =>
       </NList>
       <NText depth="3" style="font-size: 12px">
         {{ summaryQuery.data.value.model }} ·
-        {{ new Date(summaryQuery.data.value.createdAt).toLocaleString() }}
+        {{ formatTimestamp(summaryQuery.data.value.createdAt) }}
       </NText>
     </template>
 

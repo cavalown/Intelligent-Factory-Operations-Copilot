@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import { h } from 'vue';
+import { computed, h } from 'vue';
 import { NDataTable, type DataTableColumns } from 'naive-ui';
 import { RouterLink } from 'vue-router';
 import type { MachineEvent } from '../api/types';
+import { formatTimestamp } from '../format';
+import { useViewport } from '../composables/useViewport';
 import EventTypeTag from './EventTypeTag.vue';
 
-// Presentational only — pages own the fetching (add-frontend-mvp design
-// Open Question 1 resolved: one table for Event Center, Dashboard widget,
-// and Machine Detail).
+// Presentational only — pages own the fetching. One table serves Event
+// Center, the Dashboard widget, and Machine Detail; on phones it drops the
+// payload column and scrolls inside its own container (add-responsive-ui
+// design D4 — lookup pages tolerate scrolling, whole-page overflow never).
 const props = withDefaults(
   defineProps<{
     events: MachineEvent[];
@@ -17,19 +20,21 @@ const props = withDefaults(
   { loading: false, showMachine: true },
 );
 
-const columns: DataTableColumns<MachineEvent> = [
+const { isPhone } = useViewport();
+
+const columns = computed<DataTableColumns<MachineEvent>>(() => [
   {
     title: 'Time',
     key: 'occurredAt',
-    width: 190,
-    render: (row) => new Date(row.occurredAt).toLocaleString(),
+    width: isPhone.value ? 150 : 190,
+    render: (row) => formatTimestamp(row.occurredAt),
   },
   ...(props.showMachine
     ? [
         {
           title: 'Machine',
           key: 'machineId',
-          width: 120,
+          width: isPhone.value ? 90 : 120,
           render: (row: MachineEvent) =>
             h(
               RouterLink,
@@ -44,25 +49,40 @@ const columns: DataTableColumns<MachineEvent> = [
   {
     title: 'Event Type',
     key: 'eventType',
-    width: 220,
+    width: isPhone.value ? 170 : 220,
     render: (row) => h(EventTypeTag, { eventType: row.eventType }),
   },
-  {
-    title: 'Payload',
-    key: 'payload',
-    ellipsis: true,
-    render: (row) => JSON.stringify(row.payload),
-  },
-];
+  // Payload is one tap away on the detail page; truncated JSON on a phone
+  // informs nobody (design D4).
+  ...(isPhone.value
+    ? []
+    : [
+        {
+          title: 'Payload',
+          key: 'payload',
+          ellipsis: true,
+          render: (row: MachineEvent) => JSON.stringify(row.payload),
+        },
+      ]),
+]);
 </script>
 
 <template>
-  <NDataTable
-    :columns="columns"
-    :data="props.events"
-    :loading="props.loading"
-    :row-key="(row: MachineEvent) => row.eventId"
-    size="small"
-    :bordered="false"
-  />
+  <div class="events-table-scroll">
+    <NDataTable
+      :columns="columns"
+      :data="props.events"
+      :loading="props.loading"
+      :row-key="(row: MachineEvent) => row.eventId"
+      size="small"
+      :bordered="false"
+    />
+  </div>
 </template>
+
+<style scoped>
+/* Any residual width overflows inside this container, never the page body */
+.events-table-scroll {
+  overflow-x: auto;
+}
+</style>

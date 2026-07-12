@@ -12,6 +12,18 @@ export function formatDuration(ms: number): string {
   return minutes === 0 ? `${hours}h` : `${hours}h ${minutes}m`;
 }
 
+// Shared by the Machine List's table AND card renderings (add-responsive-ui
+// design D3) so the two cannot drift.
+export function formatTemperature(value: number | null): string {
+  return value === null ? '—' : `${value} °C`;
+}
+
+export function formatTimestamp(iso: string | null): string {
+  if (iso === null) return '—';
+  const ms = Date.parse(iso);
+  return Number.isFinite(ms) ? new Date(ms).toLocaleString() : '—';
+}
+
 export function formatRelativeTime(iso: string): string {
   const deltaMs = Date.now() - Date.parse(iso);
   if (!Number.isFinite(deltaMs)) return '—';

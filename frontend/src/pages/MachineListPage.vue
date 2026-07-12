@@ -1,18 +1,41 @@
 <script setup lang="ts">
-import { h } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed, h } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useQuery } from '@tanstack/vue-query';
-import { NCard, NDataTable, type DataTableColumns } from 'naive-ui';
+import { NCard, NDataTable, NTag, type DataTableColumns } from 'naive-ui';
 import { listMachines } from '../api/machines';
-import type { Machine } from '../api/types';
+import { MACHINE_STATUSES, type Machine, type MachineStatus } from '../api/types';
 import MachineStatusTag from '../components/MachineStatusTag.vue';
 
+const route = useRoute();
 const router = useRouter();
 
 const machinesQuery = useQuery({
   queryKey: ['machines'],
   queryFn: listMachines,
 });
+
+// Drill-down filter via URL state (dashboard-operational-metrics design D5);
+// filtered client-side at MVP machine counts — the URL shape is the stable
+// interface.
+const statusFilter = computed<MachineStatus | null>(() => {
+  const raw = route.query.status;
+  return typeof raw === 'string' &&
+    (MACHINE_STATUSES as readonly string[]).includes(raw)
+    ? (raw as MachineStatus)
+    : null;
+});
+
+const machines = computed(() => {
+  const all = machinesQuery.data.value?.data ?? [];
+  return statusFilter.value === null
+    ? all
+    : all.filter((m) => m.status === statusFilter.value);
+});
+
+function clearFilter() {
+  router.replace({ name: 'machines' });
+}
 
 // mvp.md Machine List: name, status, current temperature, health score,
 // last updated.
@@ -55,9 +78,20 @@ function rowProps(row: Machine) {
 
 <template>
   <NCard title="Machines" size="small">
+    <template #header-extra>
+      <NTag
+        v-if="statusFilter !== null"
+        closable
+        type="info"
+        size="small"
+        @close="clearFilter"
+      >
+        Status: {{ statusFilter }}
+      </NTag>
+    </template>
     <NDataTable
       :columns="columns"
-      :data="machinesQuery.data.value?.data ?? []"
+      :data="machines"
       :loading="machinesQuery.isLoading.value"
       :row-key="(row: Machine) => row.machineId"
       :row-props="rowProps"

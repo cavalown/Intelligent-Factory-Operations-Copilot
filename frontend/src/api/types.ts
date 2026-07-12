@@ -73,12 +73,43 @@ export interface AiSummary {
   createdAt: string;
 }
 
-// api.md §4.11 GET /dashboard/stats
+// api.md §4.11 GET /dashboard/stats (last24h added by dashboard-operational-metrics)
 export interface DashboardStats {
   machineCount: number;
   statusCounts: Record<MachineStatus, number>;
   totalProductionCount: number;
   averageHealthScore: number | null;
+  last24h: {
+    productionCount: number;
+    operatingMs: number;
+    stoppedMs: number;
+    idleMs: number;
+    // True when any machine's window used the bootstrap approximation.
+    approximate: boolean;
+  };
+}
+
+// api.md §5.3 Alert
+export interface Alert {
+  alertId: string;
+  machineId: string;
+  eventId: string;
+  severity: 'WARNING' | 'CRITICAL';
+  status: 'ACTIVE' | 'RESOLVED';
+  message: string;
+  createdAt: string;
+  resolvedAt: string | null;
+}
+
+// api.md §4.12 — GET /machines/:id/utilization
+export interface Utilization {
+  machineId: string;
+  windowMs: number;
+  operatingMs: number;
+  stoppedMs: number;
+  idleMs: number;
+  // True when derived via the bootstrap approximation (no transition history).
+  approximate: boolean;
 }
 
 // api.md §4.8 POST /simulator/events response

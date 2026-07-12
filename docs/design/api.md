@@ -387,11 +387,55 @@ Returns the factory-wide aggregate the Dashboard's stat tiles render, computed f
     "MAINTENANCE": 1
   },
   "totalProductionCount": 145,
-  "averageHealthScore": 62.7
+  "averageHealthScore": 62.7,
+  "last24h": {
+    "productionCount": 42,
+    "operatingMs": 61200000,
+    "stoppedMs": 4300000,
+    "idleMs": 20900000,
+    "approximate": false
+  }
 }
 ```
 
-`statusCounts` always contains all five statuses, zero-filled. On an empty machines collection, `machineCount` is `0` and `averageHealthScore` is `null`. The dashboard's "Critical Machines" tile maps to `statusCounts.ERROR`.
+`statusCounts` always contains all five statuses, zero-filled. On an empty machines collection, `machineCount` is `0`, `averageHealthScore` is `null`, and `last24h` is all zeros. The dashboard's "Critical Machines" tile maps to `statusCounts.ERROR`. `last24h.approximate` is `true` when any machine's window used the bootstrap approximation described in §4.12.
+
+`last24h` (added by the `dashboard-operational-metrics` change) covers the rolling window `[now − 24h, now]`: `productionCount` sums `PRODUCTION_COMPLETED` quantities by `occurredAt`; the three durations sum every machine's time-in-status buckets (see §4.12).
+
+---
+
+### 4.12 `GET /machines/:id/utilization`
+
+Returns rolling-24h time-in-status for one machine, computed from the `machine_status_transitions` projection: `operatingMs` (`RUNNING` + `WARNING`), `stoppedMs` (`ERROR` + `MAINTENANCE`), `idleMs` (`IDLE`). The three durations sum to `windowMs`.
+
+**Response `200`**
+
+```json
+{
+  "machineId": "M-001",
+  "windowMs": 86400000,
+  "operatingMs": 61200000,
+  "stoppedMs": 4300000,
+  "idleMs": 20900000,
+  "approximate": false
+}
+```
+
+**Response `404`** — `MACHINE_NOT_FOUND` if `:id` does not exist.
+
+**Bootstrap approximation:** transitions only accrue from the change's deployment onward; a machine with no recorded transitions is treated as having held its current status for the whole window, and the response carries `approximate: true` so clients can annotate the value (the dashboard renders `≈`). The approximation disappears after 24h of history (or entirely after an event replay rebuild).
+
+---
+
+### 4.13 `GET /alerts`
+
+Cross-machine alert read backing the Dashboard's Active Alerts widget. Same item shape as §4.4, most-recent-first.
+
+**Query parameters:** `status` (optional, `ACTIVE` | `RESOLVED`), `limit` (optional, default 20, capped at 100).
+
+**Response `200`** — `{ "data": [ ...alerts ] }`.
+
+**Response `400`** — `INVALID_QUERY_PARAMETER` if `status` is not one of `ACTIVE` | `RESOLVED` (also applies to §4.4's `status` filter). Out-of-range `limit` values are clamped, not rejected.
 
 ---
 
@@ -446,7 +490,8 @@ See `docs/design/event-schema.md` section 3 for the full envelope and section 5 
 
 | HTTP Status | Code | Meaning |
 | --- | --- | --- |
-| `400` | `INVALID_EVENT_ENVELOPE` | Request body is missing a required envelope field or a field has the wrong type. |
+| `400` | `INVALID_EVENT_ENVELOPE` | Request body is missing a required envelope field, a field has the wrong type, or a timestamp is not canonical ISO-8601 UTC (`YYYY-MM-DDTHH:mm:ss.sssZ`, per §2.3). |
+| `400` | `INVALID_QUERY_PARAMETER` | A query parameter value is outside its documented domain (e.g. `status` not in `ACTIVE`/`RESOLVED`). |
 | `404` | `MACHINE_NOT_FOUND` | The `:id` path parameter does not match an existing machine. |
 | `404` | `UNKNOWN_MACHINE` | `POST /simulator/events` body references a `machineId` that isn't pre-seeded. |
 | `404` | `SUMMARY_NOT_FOUND` | No AI summary has been generated yet for this machine (§4.6) or for the factory (§4.9). |

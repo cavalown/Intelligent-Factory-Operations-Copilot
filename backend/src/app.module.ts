@@ -5,6 +5,7 @@ import { EventsModule } from './events/events.module';
 import { MachinesModule } from './machines/machines.module';
 import { AlertsModule } from './alerts/alerts.module';
 import { InsightsModule } from './insights/insights.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 import { SimulatorModule } from './simulator/simulator.module';
 import { SharedModule } from './shared/shared.module';
 
@@ -14,6 +15,7 @@ import { SharedModule } from './shared/shared.module';
     MachinesModule,
     AlertsModule,
     InsightsModule,
+    DashboardModule,
     SimulatorModule,
     SharedModule,
   ],

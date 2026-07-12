@@ -734,11 +734,12 @@ backend/
 ├── events/
 ├── alerts/
 ├── insights/
+├── dashboard/    # API-layer composition only (§7.7) — owns no persistence
 ├── simulator/
 └── shared/
 ```
 
-Each module should own its domain logic and persistence access.
+Each module should own its domain logic and persistence access. `dashboard/` is the exception that proves the rule: it is the §7.7 API-layer aggregation seam, composing reads from other modules' exported services (added by the `dashboard-operational-metrics` change when `/dashboard/stats` began spanning the machines and events domains); it owns no models or collections.
 
 ### 14.2 Service Extraction Path
 

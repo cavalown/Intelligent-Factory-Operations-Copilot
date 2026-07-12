@@ -1,6 +1,6 @@
 # Module Boundaries
 
-Follow the module structure in `docs/design/architecture.md` §14.1: `events/`, `machines/`, `alerts/`, `insights/`, `simulator/`, `shared/`.
+Follow the module structure in `docs/design/architecture.md` §14.1: `events/`, `machines/`, `alerts/`, `insights/`, `simulator/`, `shared/`, plus `dashboard/` — the §7.7 API-layer composition module that owns no persistence and only aggregates other modules' exported services (don't put domain logic or models there).
 
 Each module owns its own persistence access (its own Mongoose models/collections). Don't import another module's model directly — go through its exported service.
 

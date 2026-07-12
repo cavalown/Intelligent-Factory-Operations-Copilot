@@ -191,6 +191,10 @@ Per `CLAUDE.md` design rule 4, consumers must guard against duplicate event proc
 
 `lastEventId` on the machine document identifies the most recently applied event, but by itself it only protects against re-applying the *immediately preceding* event twice — it cannot detect an out-of-order redelivery of an older event. Full duplicate protection (e.g. checking `machine_events` for prior processing, or a consumer-level dedup store) is a backend implementation concern and is out of scope for this schema document.
 
+### 8.1 Status-Write Contract
+
+Any code path that mutates a machine's `status` and persists it MUST also record a `machine_status_transitions` row (from/to status, event `occurredAt`, `eventId`) — the 24h utilization computation is derived entirely from that projection, and a bypassing write silently corrupts it. Today the projection consumer's `recordTransitionIfChanged` is the only status writer; if a future path is added (e.g. Phase 2's alert-acknowledgment workflow or a manual override endpoint), either route it through the same recording helper or refactor status assignment into a single owned method first. See `openspec/changes/dashboard-operational-metrics/design.md` D10.
+
 ---
 
 ## 9. Example Machine Document

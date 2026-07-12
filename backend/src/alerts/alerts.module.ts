@@ -5,13 +5,14 @@ import { Alert, AlertSchema } from './schemas/alert.schema';
 import { AlertConsumerService } from './alert-consumer.service';
 import { AlertsService } from './alerts.service';
 import { AlertsController } from './alerts.controller';
+import { AlertsListController } from './alerts-list.controller';
 
 @Module({
   imports: [
     MachinesModule,
     MongooseModule.forFeature([{ name: Alert.name, schema: AlertSchema }]),
   ],
-  controllers: [AlertsController],
+  controllers: [AlertsController, AlertsListController],
   providers: [AlertConsumerService, AlertsService],
   // Consumed by the Insight Service's context gatherer (add-insights-module design D2).
   exports: [AlertsService],

@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { MachinesService } from '../machines/machines.service';
-import { Alert, AlertDocument } from './schemas/alert.schema';
+import { ApiError } from '../shared/errors/api-error';
+import { Alert, AlertDocument, ALERT_STATUSES } from './schemas/alert.schema';
 
 @Injectable()
 export class AlertsService {
@@ -26,6 +27,20 @@ export class AlertsService {
     status?: string;
     limit?: number;
   }) {
+    // Domain validation against the schema's own constant (code-style.md:
+    // enum membership, not just "is a string"). Sits here so both HTTP routes
+    // are covered; internal callers pass literals.
+    if (
+      options.status !== undefined &&
+      !(ALERT_STATUSES as readonly string[]).includes(options.status)
+    ) {
+      throw new ApiError(
+        HttpStatus.BAD_REQUEST,
+        'INVALID_QUERY_PARAMETER',
+        `status must be one of: ${ALERT_STATUSES.join(', ')}.`,
+      );
+    }
+
     const filter: Record<string, unknown> = {};
     if (options.machineId) {
       filter.machineId = options.machineId;

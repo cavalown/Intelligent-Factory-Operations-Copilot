@@ -38,6 +38,28 @@ export class EventsService {
     return this.queryEvents(query);
   }
 
+  // Cross-module aggregation for the dashboard's rolling-24h production count
+  // (dashboard-operational-metrics design D3). Both bounds are applied so the
+  // count honors the same [since, until] window the utilization durations use
+  // — future-dated events must not inflate it (review fix, design D6 group).
+  // $sum ignores non-numeric quantities, matching the projection consumer's
+  // Number.isFinite guard.
+  async sumProductionInWindow(
+    sinceIso: string,
+    untilIso: string,
+  ): Promise<number> {
+    const [row] = await this.machineEventModel.aggregate<{ total: number }>([
+      {
+        $match: {
+          eventType: 'PRODUCTION_COMPLETED',
+          occurredAt: { $gte: sinceIso, $lte: untilIso },
+        },
+      },
+      { $group: { _id: null, total: { $sum: '$payload.quantity' } } },
+    ]);
+    return row?.total ?? 0;
+  }
+
   private async queryEvents(query: {
     machineId?: string;
     limit?: string;

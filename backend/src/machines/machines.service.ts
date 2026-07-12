@@ -2,7 +2,11 @@ import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { ApiError } from '../shared/errors/api-error';
-import { Machine, MachineDocument, MACHINE_STATUSES } from './schemas/machine.schema';
+import {
+  Machine,
+  MachineDocument,
+  MACHINE_STATUSES,
+} from './schemas/machine.schema';
 import type { MachineStatus } from './schemas/machine.schema';
 
 @Injectable()
@@ -87,9 +91,7 @@ export class MachinesService {
       statusCounts,
       totalProductionCount: row?.totalProductionCount ?? 0,
       averageHealthScore:
-        row === undefined
-          ? null
-          : Math.round(row.averageHealthScore * 10) / 10,
+        row === undefined ? null : Math.round(row.averageHealthScore * 10) / 10,
     };
   }
 

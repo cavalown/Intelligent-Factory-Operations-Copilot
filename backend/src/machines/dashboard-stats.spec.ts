@@ -1,5 +1,4 @@
 import { MachinesService } from './machines.service';
-import { DashboardController } from './dashboard.controller';
 
 describe('dashboard stats', () => {
   let machineModel: { aggregate: jest.Mock };
@@ -79,16 +78,7 @@ describe('dashboard stats', () => {
     expect(after.statusCounts.WARNING).toBe(1);
   });
 
-  it('controller delegates to the service', async () => {
-    const stats = { machineCount: 0 };
-    const mockService = {
-      getDashboardStats: jest.fn().mockResolvedValue(stats),
-    };
-    const controller = new DashboardController(
-      mockService as unknown as MachinesService,
-    );
-
-    await expect(controller.getStats()).resolves.toBe(stats);
-    expect(mockService.getDashboardStats).toHaveBeenCalled();
-  });
+  // Controller delegation now lives in dashboard/dashboard.service.spec.ts —
+  // the route moved to the dashboard composition module
+  // (dashboard-operational-metrics design D3).
 });

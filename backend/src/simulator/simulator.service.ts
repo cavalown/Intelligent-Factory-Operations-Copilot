@@ -21,6 +21,21 @@ const REQUIRED_ENVELOPE_FIELDS = [
   'payload',
 ] as const;
 
+// Canonical ISO-8601 UTC (api.md §2.3). Everything downstream — lexicographic
+// window queries, transition ordering, duration arithmetic — relies on this
+// exact form, so ingestion enforces it (dashboard-operational-metrics design
+// D6). The regex pins the shape; Date.parse rejects impossible instants the
+// shape allows (e.g. month 13).
+const CANONICAL_ISO_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+
+function isCanonicalIsoUtc(value: unknown): boolean {
+  return (
+    typeof value === 'string' &&
+    CANONICAL_ISO_UTC.test(value) &&
+    Number.isFinite(Date.parse(value))
+  );
+}
+
 @Injectable()
 export class SimulatorService {
   constructor(
@@ -80,6 +95,16 @@ export class SimulatorService {
         'INVALID_EVENT_ENVELOPE',
         'schemaVersion must be a finite number.',
       );
+    }
+    for (const field of ['occurredAt', 'producedAt'] as const) {
+      if (!isCanonicalIsoUtc(body[field])) {
+        throw new ApiError(
+          HttpStatus.BAD_REQUEST,
+          'INVALID_EVENT_ENVELOPE',
+          `${field} must be a canonical ISO-8601 UTC timestamp ` +
+            `(YYYY-MM-DDTHH:mm:ss.sssZ).`,
+        );
+      }
     }
   }
 

@@ -5,12 +5,17 @@ import { Model } from 'mongoose';
 import { KAFKA_CLIENT } from '../shared/kafka/kafka-client.provider';
 import { KafkaConsumerBase } from '../shared/kafka/kafka-consumer.base';
 import { env } from '../shared/config/env.config';
+import { isDuplicateKeyError } from '../shared/database/mongo-error.util';
 import { MachineEvent } from '../shared/types/machine-event.types';
 import {
   Machine,
   MachineDocument,
   MachineStatus,
 } from './schemas/machine.schema';
+import {
+  MachineStatusTransition,
+  MachineStatusTransitionDocument,
+} from './schemas/machine-status-transition.schema';
 import { clampHealthScore, raiseSeverity } from './machine-status.util';
 
 // MVP rule (design.md Decision 1 of remaining-mvp-event-types): any
@@ -31,6 +36,8 @@ export class MachineProjectionConsumerService extends KafkaConsumerBase {
     @Inject(KAFKA_CLIENT) kafka: Kafka,
     @InjectModel(Machine.name)
     private readonly machineModel: Model<MachineDocument>,
+    @InjectModel(MachineStatusTransition.name)
+    private readonly transitionModel: Model<MachineStatusTransitionDocument>,
   ) {
     super(kafka, 'machine-service-group', env.kafkaTopicMachineEvents);
   }
@@ -48,6 +55,8 @@ export class MachineProjectionConsumerService extends KafkaConsumerBase {
 
     // Idempotency: only guards immediate repeats, per machine-schema.md §8.
     if (machine.lastEventId === event.eventId) return;
+
+    const previousStatus = machine.status;
 
     // docs/design/machine-schema.md §4.3 / §5.2 / §7
     switch (event.eventType) {
@@ -108,6 +117,41 @@ export class MachineProjectionConsumerService extends KafkaConsumerBase {
     machine.lastEventId = event.eventId;
     machine.lastUpdatedAt = event.producedAt;
 
+    await this.recordTransitionIfChanged(machine, previousStatus, event);
+
     await machine.save();
+  }
+
+  // Transitions are a rebuildable secondary projection — their write failure
+  // must never abort the primary projection update, so every error is
+  // swallowed here (dashboard-operational-metrics design D7). Failure
+  // semantics: a data error (e.g. validation) skips the transition with a
+  // warning while the projection still saves; a transient Mongo failure makes
+  // the following machine.save() fail too, so redelivery retries both (the
+  // duplicate-key path keeps that idempotent). Any future code path that
+  // mutates machine.status MUST record a transition the same way — see
+  // docs/design/machine-schema.md.
+  private async recordTransitionIfChanged(
+    machine: MachineDocument,
+    previousStatus: MachineStatus,
+    event: MachineEvent,
+  ): Promise<void> {
+    if (machine.status === previousStatus) return;
+
+    try {
+      await this.transitionModel.create({
+        machineId: event.machineId,
+        fromStatus: previousStatus,
+        toStatus: machine.status,
+        at: event.occurredAt,
+        eventId: event.eventId,
+      });
+    } catch (err: unknown) {
+      if (!isDuplicateKeyError(err)) {
+        this.logger.warn(
+          `Skipping status-transition record for event ${event.eventId}: ${String(err)}`,
+        );
+      }
+    }
   }
 }

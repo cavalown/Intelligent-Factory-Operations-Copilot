@@ -11,8 +11,9 @@ import {
   NSkeleton,
 } from 'naive-ui';
 import { ApiError } from '../api/client';
-import { getMachine } from '../api/machines';
+import { getMachine, getUtilization } from '../api/machines';
 import { listEvents } from '../api/events';
+import { formatDuration } from '../format';
 import AiSummaryCard from '../components/AiSummaryCard.vue';
 import EventsTable from '../components/EventsTable.vue';
 import MachineStatusTag from '../components/MachineStatusTag.vue';
@@ -29,6 +30,12 @@ const machineQuery = useQuery({
 const eventsQuery = useQuery({
   queryKey: computed(() => ['events', { machineId: machineId.value }]),
   queryFn: () => listEvents({ machineId: machineId.value, limit: 20 }),
+  enabled: computed(() => machineQuery.isSuccess.value),
+});
+
+const utilizationQuery = useQuery({
+  queryKey: computed(() => ['utilization', machineId.value]),
+  queryFn: () => getUtilization(machineId.value),
   enabled: computed(() => machineQuery.isSuccess.value),
 });
 
@@ -84,6 +91,12 @@ const notFound = computed(
           }}
         </NDescriptionsItem>
       </NDescriptions>
+      <div v-if="utilizationQuery.data.value" class="utilization-strip">
+        Last 24h{{ utilizationQuery.data.value.approximate ? ' (estimated — limited history)' : '' }}:
+        <strong>Operating {{ formatDuration(utilizationQuery.data.value.operatingMs) }}</strong>
+        · Stopped {{ formatDuration(utilizationQuery.data.value.stoppedMs) }}
+        · Idle {{ formatDuration(utilizationQuery.data.value.idleMs) }}
+      </div>
     </NCard>
 
     <div class="detail-row">
@@ -111,5 +124,10 @@ const notFound = computed(
 }
 .detail-summary {
   flex: 2;
+}
+.utilization-strip {
+  margin-top: 12px;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.6);
 }
 </style>

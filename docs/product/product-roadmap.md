@@ -48,7 +48,7 @@ Build the minimum viable intelligent factory platform.
 * Machine Detail
 * Event Center
 * Simulator
-* Kafka Event Flow
+「ㄤ* Kafka Event Flow
 * AI Summary *(Preview of Phase 4)*
 
 ---
@@ -107,7 +107,7 @@ Transform the system into an event-driven platform.
 * Incident Management
 * Notification Center
 * Event Replay
-* WebSocket Real-time Update
+* Real-time Update via SSE invalidate *(decided 2026-07-13: the dashboard's data flow is purely server→client, so Server-Sent Events pushing tiny "changed" notifications that invalidate frontend queries is the correct mechanism — not a budget WebSocket; WebSocket is reconsidered only if a genuinely bidirectional streaming need ever emerges, and none is on this roadmap)*
 * Event History
 * Alert Acknowledgment & Resolution Workflow
 * Alert Escalation Rules (for unresolved critical alerts)

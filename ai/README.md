@@ -26,3 +26,4 @@ Tool-agnostic AI-agent guidance for IFOC (Intelligent Factory Operations Copilot
 | [communication-language.md](rules/communication-language.md) | Reply to the user in Traditional Chinese; written artifacts stay English. |
 | [research-before-building.md](rules/research-before-building.md) | Check whether a library already solves an infra problem before hand-rolling it; verify cross-boundary design claims, don't assert them. |
 | [frontend-responsive.md](rules/frontend-responsive.md) | Every frontend change considers phone/tablet/desktop behavior at design time; established breakpoints and patterns. |
+| [bilingual-docs.md](rules/bilingual-docs.md) | Every markdown doc outside `ai/` has a Traditional Chinese `.zh-TW.md` counterpart, kept in sync with the English source of truth. |

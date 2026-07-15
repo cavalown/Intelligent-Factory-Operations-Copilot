@@ -1,44 +1,53 @@
-# Intelligent-Factory-Operations-Copilot 智慧製造營運助理系統
-Intelligent Factory Operations Copilot is a production-style system that combines event-driven architecture, rule-based anomaly detection, RAG, and workflow automation to help engineers investigate manufacturing incidents.
+# Intelligent Factory Operations Copilot 智慧製造營運助理系統
 
-## Roadmap
+A production-style system that combines event-driven architecture, rule-based anomaly detection, RAG, and workflow automation to help engineers investigate manufacturing incidents.
 
-See `docs/product-roadmap.md`
+[繁體中文版](README.zh-TW.md)
 
+## Tech Stack
 
-docs/
-│
-├── README.md                           # 文件導覽（Documentation Index）
-│
-├── product/                            # Product Documentation
-│   ├── product-roadmap.md              # Long-term product roadmap
-│   └── mvp.md                          # Minimum Viable Product scope
-│
-├── design/                             # System Design
-│   ├── architecture.md                 # Overall system architecture
-│   ├── event-flow.md                   # Event processing flow
-│   ├── machine-schema.md               # Machine domain model
-│   ├── event-schema.md                 # Event domain model
-│   ├── api.md                          # API contract
-│   ├── database.md                     # (Future) Database design
-│   ├── ai-design.md                    # (Future) AI architecture
-│   └── security.md                     # (Future) Security design
-│
-├── decisions/                          # Architecture Decision Records (ADR)
-│   ├── README.md                       # ADR guideline
-│   ├── ADR-0001-use-kafka.md
-│   ├── ADR-0002-use-mongodb.md
-│   ├── ADR-0003-rest-api.md
-│   └── ADR-0004-ai-summary-before-rag.md
-│
-├── deployment/                         # Deployment Documentation
-│   ├── local-development.md
-│   ├── docker-compose.md
-│   └── kubernetes.md
-│
-└── assets/                             # Images & diagrams
-    ├── architecture.drawio
-    ├── event-flow.drawio
-    ├── system-overview.png
-    └── screenshots/
+| Layer | Technology |
+| --- | --- |
+| Frontend | Vue 3, TypeScript |
+| Backend | NestJS (modular monolith) |
+| Messaging | Kafka (topic: `machine.events`, key: `machineId`) |
+| Database | MongoDB |
+| AI | LLM API (direct summaries; RAG planned) |
+| Observability | OpenTelemetry → Grafana LGTM stack |
+| Local Runtime | Docker Compose |
 
+## Quick Start
+
+```bash
+docker compose up
+```
+
+| Service | URL |
+| --- | --- |
+| Frontend | http://localhost:5173 |
+| Backend API | http://localhost:3000/api |
+| Grafana (observability) | http://localhost:3001 |
+
+See [`docs/deployment/docker-compose.md`](docs/deployment/docker-compose.md) for service details and environment variables, or [`docs/deployment/local-development.md`](docs/deployment/local-development.md) to run services outside Docker.
+
+## Project Structure
+
+| Path | Contents |
+| --- | --- |
+| [`backend/`](backend/) | NestJS API — event consumers, machine/alert projections, AI insight service |
+| [`frontend/`](frontend/) | Vue 3 dashboard |
+| [`docs/`](docs/README.md) | Product, design, and deployment documentation |
+| [`ai/`](ai/README.md) | Project context, rules, and workflows for AI coding assistants |
+| [`openspec/`](openspec) | Spec-driven change proposals |
+
+## Documentation
+
+Start at [`docs/README.md`](docs/README.md) — the full documentation index, with a suggested reading order. Highlights:
+
+* [`docs/product/mvp.md`](docs/product/mvp.md) — what the MVP does and why
+* [`docs/design/architecture.md`](docs/design/architecture.md) — system architecture
+* [`docs/product/product-roadmap.md`](docs/product/product-roadmap.md) — long-term roadmap
+
+## License
+
+No license file yet — all rights reserved by default.

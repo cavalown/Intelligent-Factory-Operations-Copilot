@@ -37,6 +37,7 @@ Defines how IFOC is built.
 | [`design/api.md`](design/api.md) | ✅ | REST API contract between backend, dashboard, and simulator. |
 | [`design/machine-schema.md`](design/machine-schema.md) | ✅ | Machine domain model — projection fields, status transitions, health score rules. |
 | [`design/event-flow.md`](design/event-flow.md) | ✅ | Worked example — one event's full lifecycle, from simulator trigger through all consumers to AI summary. Complements, doesn't repeat, architecture.md §9–10. |
+| [`design/observability.md`](design/observability.md) | ✅ | OpenTelemetry traces/metrics, structured logging, and the `ifoc.events.processed` metric (Phase 1.1) — what's instrumented, the correlation model, fail-soft behavior, and how to read it in Grafana. |
 | [`design/database.md`](design/database.md) | 🔮 | Future: detailed MongoDB schema, indexes, and query patterns. |
 | [`design/ai-design.md`](design/ai-design.md) | 🔮 | Future: Insight Service prompt design, RAG architecture (Phase 3). |
 | [`design/security.md`](design/security.md) | 🔮 | Future: authentication, authorization, secrets management. |
@@ -64,6 +65,7 @@ Postmortems on real implementation mistakes and their root causes — not ADRs (
 | [`retrospectives/README.md`](retrospectives/README.md) | ✅ | Index and criteria for adding a retrospective. |
 | [`retrospectives/2026-07-backend-implementation-lessons.md`](retrospectives/2026-07-backend-implementation-lessons.md) | ✅ | 5 root-cause patterns from 3 `/code-review` rounds and one architectural reversal during the initial backend build. |
 | [`retrospectives/2026-07-dashboard-metrics-review-lessons.md`](retrospectives/2026-07-dashboard-metrics-review-lessons.md) | ✅ | 4 root-cause patterns from the dashboard-operational-metrics review: secondary-write-on-critical-path × poison-pill classification, compounding assumptions on weakly-validated fields, stale doc registries, silent degraded modes. |
+| [`retrospectives/2026-07-observability-review-lessons.md`](retrospectives/2026-07-observability-review-lessons.md) | ✅ | 5 root-cause patterns from the add-observability review — two are direct recurrences of previously-documented patterns, which is itself the headline lesson. |
 
 ## Deployment
 

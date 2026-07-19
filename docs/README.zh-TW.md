@@ -37,6 +37,7 @@
 | [`design/api.md`](design/api.md) | ✅ | 後端、儀表板與模擬器之間的 REST API 契約。 |
 | [`design/machine-schema.md`](design/machine-schema.md) | ✅ | 機台領域模型 — 投影（projection）欄位、狀態轉移、健康分數規則。 |
 | [`design/event-flow.md`](design/event-flow.md) | ✅ | 完整範例 — 單一事件的完整生命週期，從模擬器觸發、經過所有 consumer、到 AI 摘要。與 architecture.md §9–10 互補而不重複。 |
+| [`design/observability.md`](design/observability.md) | ✅ | OpenTelemetry traces/metrics、結構化日誌，以及 `ifoc.events.processed` metric（Phase 1.1）— 哪些東西被 instrument 了、關聯機制、fail-soft 行為，以及怎麼在 Grafana 裡看。 |
 | [`design/database.md`](design/database.md) | 🔮 | 未來：詳細的 MongoDB 綱要、索引與查詢模式。 |
 | [`design/ai-design.md`](design/ai-design.md) | 🔮 | 未來：Insight Service 提示詞設計、RAG 架構（Phase 3）。 |
 | [`design/security.md`](design/security.md) | 🔮 | 未來：身分驗證、授權、機密管理。 |
@@ -64,6 +65,7 @@
 | [`retrospectives/README.md`](retrospectives/README.md) | ✅ | 索引與新增回顧紀錄的標準。 |
 | [`retrospectives/2026-07-backend-implementation-lessons.md`](retrospectives/2026-07-backend-implementation-lessons.md) | ✅ | 初版後端建置期間，3 輪 `/code-review` 與一次架構翻案中歸納出的 5 個根因模式。 |
 | [`retrospectives/2026-07-dashboard-metrics-review-lessons.md`](retrospectives/2026-07-dashboard-metrics-review-lessons.md) | ✅ | dashboard-operational-metrics 審查歸納出的 4 個根因模式：關鍵路徑上的次要寫入 × poison-pill 分類、對弱驗證欄位的複合假設、過期的文件註冊表、無聲的降級模式。 |
+| [`retrospectives/2026-07-observability-review-lessons.md`](retrospectives/2026-07-observability-review-lessons.md) | ✅ | add-observability 審查歸納出的 5 個根因模式 — 其中兩個是先前已記錄過的模式的直接重演，這件事本身就是最主要的教訓。 |
 
 ## 部署
 

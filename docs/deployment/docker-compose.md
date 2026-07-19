@@ -2,7 +2,7 @@
 
 ## 1. Purpose
 
-This document defines the Docker Compose setup that runs all of IFOC's MVP services locally: frontend, backend, MongoDB, and Kafka. This is the only deployment target for the MVP — see `docs/design/architecture.md` §13.1 (no Kubernetes, no managed cloud services in the MVP).
+This document defines the Docker Compose setup that runs all of IFOC's MVP services locally: frontend, backend, MongoDB, Kafka, and the `lgtm` observability stack (Phase 1.1). This is the only deployment target for the MVP — see `docs/design/architecture.md` §13.1 (no Kubernetes, no managed cloud services in the MVP).
 
 Kafka runs from day one of the MVP, not a later phase — it is the event backbone for the core `simulator → Kafka → consumers → MongoDB` flow described in `CLAUDE.md`, so it belongs in the same Compose file as everything else from the start.
 
@@ -18,8 +18,9 @@ Topology diagram source: [`docs/assets/mermaid/deployment-topology.mmd`](../asse
 | `backend` | built from `backend/` (NestJS modular monolith) | REST API, Kafka consumer, Insight Service. | `3000` |
 | `mongodb` | `mongo:7` | Stores `machine_events`, `machines`, `alerts`, `ai_summaries`. | `27017` |
 | `kafka` | `apache/kafka:3.8.0` | Event backbone, topic `machine.events`. Runs in **KRaft mode** — no separate Zookeeper container. | `9092` |
+| `lgtm` | `grafana/otel-lgtm:latest` | Demo-weight observability stack (Collector + Loki + Tempo + Prometheus + Grafana in one container) — see `docs/product/product-roadmap.md` Phase 1.1. Ephemeral storage; the platform runs identically with this container absent or stopped. | `3001` (Grafana UI), `4318` (OTLP HTTP) |
 
-Four services, no Zookeeper — KRaft mode was chosen specifically to keep the local MVP footprint to one container per concern (`docs/decisions/ADR-0001-use-kafka.md` covers why Kafka itself was chosen; this document only covers how it runs locally).
+Five services, no Zookeeper — KRaft mode was chosen specifically to keep the local MVP footprint to one container per concern (`docs/decisions/ADR-0001-use-kafka.md` covers why Kafka itself was chosen; this document only covers how it runs locally).
 
 ---
 
@@ -55,6 +56,13 @@ services:
     volumes:
       - mongo_data:/data/db
 
+  lgtm:
+    image: grafana/otel-lgtm:latest
+    container_name: ifoc-lgtm
+    ports:
+      - "3001:3000" # Grafana UI (backend already owns host :3000)
+      - "4318:4318" # OTLP HTTP receiver
+
   backend:
     build: ./backend
     container_name: ifoc-backend
@@ -66,10 +74,19 @@ services:
       MONGODB_URI: mongodb://mongodb:27017/ifoc
       KAFKA_BROKERS: kafka:9092
       KAFKA_TOPIC_MACHINE_EVENTS: machine.events
-      LLM_API_KEY: ${LLM_API_KEY}
+      LLM_PROVIDER: ${LLM_PROVIDER:-mock}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-}
+      OTEL_SERVICE_NAME: ifoc-backend
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4318
+      OTEL_SDK_DISABLED: ${OTEL_SDK_DISABLED:-false}
     depends_on:
       - kafka
       - mongodb
+      # lgtm deliberately excluded: backend doesn't need it ready at any
+      # point (OTLP export is fail-soft regardless of start order — design.md
+      # D5), and depends_on would otherwise block backend's own startup if
+      # the lgtm image fails to pull (e.g. offline, registry rate limiting).
 
   frontend:
     build: ./frontend
@@ -108,6 +125,9 @@ volumes:
 | `LLM_PROVIDER` | `backend` | Which Insight Service LLM adapter to use. Defaults to `mock` (built-in, no API key needed) so local dev and the demo run without external credentials; an unknown value fails startup fast. |
 | `LLM_API_KEY` | `backend` | Credential for the Insight Service's LLM API calls (`architecture.md` §7.6). Not committed — supplied via a local `.env` file or shell environment. Unused by the `mock` provider. |
 | `LLM_MODEL` | `backend` | Model identifier passed to the configured LLM provider. Unused by the `mock` provider. |
+| `OTEL_SERVICE_NAME` | `backend` | Service name attached to all emitted traces/metrics/logs (`backend/src/instrumentation.ts`). Defaults to `ifoc-backend`. |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | `backend` | Base URL the OTel SDK ships traces/metrics/logs to via OTLP/HTTP. Defaults to `http://localhost:4318` (the OTel spec default); set to `http://lgtm:4318` in Compose. Unreachable is harmless — exporters buffer-and-drop (Phase 1.1, `openspec/changes/add-observability/design.md` D5). |
+| `OTEL_SDK_DISABLED` | `backend` | `true` fully disables the OTel SDK (no traces/metrics/logs export, no auto-instrumentation). Defaults to `false`. |
 | `VITE_API_BASE_URL` | `frontend` | Base URL the dashboard uses to reach the backend, matching `docs/design/api.md` §2.1. |
 
 `LLM_API_KEY` should be provided through a local `.env` file (gitignored) or the shell environment — never committed to the repository.
@@ -120,7 +140,7 @@ volumes:
 docker compose up -d
 ```
 
-Expected order: `kafka` and `mongodb` start first (no dependencies), then `backend` (depends on both), then `frontend` (depends on `backend`). The backend should retry its Kafka/MongoDB connections on startup rather than crash-looping, since Compose's `depends_on` only waits for the container to start, not for Kafka/MongoDB to be ready to accept connections.
+Expected order: `kafka` and `mongodb` start first (no dependencies), then `backend` (depends on both), then `frontend` (depends on `backend`). The backend should retry its Kafka/MongoDB connections on startup rather than crash-looping, since Compose's `depends_on` only waits for the container to start, not for Kafka/MongoDB to be ready to accept connections. `lgtm` starts independently, with no dependency relationship to `backend` in either direction — deliberately: the backend never waits on it to start (so a failed/slow `lgtm` image pull can never block `backend` from coming up) and serves normally whether `lgtm` is present, absent, stopped, or removed, per `add-observability/design.md` D5.
 
 To reset all local data (events, projections, Kafka log):
 

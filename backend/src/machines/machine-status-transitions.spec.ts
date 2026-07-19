@@ -33,8 +33,8 @@ function makeConsumer(machine: unknown, transitionModel: unknown) {
   );
 }
 
-function payloadFor(event: object) {
-  return { message: { value: Buffer.from(JSON.stringify(event)) } } as never;
+function asEvent(event: object) {
+  return event as never;
 }
 
 describe('machine status transition recording', () => {
@@ -49,7 +49,7 @@ describe('machine status transition recording', () => {
     const consumer = makeConsumer(machine, transitionModel);
 
     await consumer['handleMessage'](
-      payloadFor({
+      asEvent({
         ...BASE_EVENT,
         eventType: 'ERROR_OCCURRED',
         payload: { errorCode: 'E1', errorMessage: 'boom' },
@@ -71,7 +71,7 @@ describe('machine status transition recording', () => {
     const consumer = makeConsumer(machine, transitionModel);
 
     await consumer['handleMessage'](
-      payloadFor({
+      asEvent({
         ...BASE_EVENT,
         eventType: 'TEMPERATURE_REPORTED',
         payload: { temperature: 50, unit: 'C' }, // within threshold
@@ -88,7 +88,7 @@ describe('machine status transition recording', () => {
     const consumer = makeConsumer(machine, transitionModel);
 
     await consumer['handleMessage'](
-      payloadFor({
+      asEvent({
         ...BASE_EVENT,
         eventType: 'MAINTENANCE_REQUIRED',
         payload: { maintenanceType: 'PREVENTIVE', reason: 'due' },
@@ -104,7 +104,7 @@ describe('machine status transition recording', () => {
     const consumer = makeConsumer(machine, transitionModel);
 
     await consumer['handleMessage'](
-      payloadFor({
+      asEvent({
         ...BASE_EVENT,
         eventType: 'ERROR_OCCURRED',
         payload: { errorCode: 'E1', errorMessage: 'boom' },

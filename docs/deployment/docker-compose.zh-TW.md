@@ -2,7 +2,7 @@
 
 ## 1. 目的
 
-本文件定義在本機執行 IFOC 所有 MVP 服務的 Docker Compose 設定：frontend、backend、MongoDB 與 Kafka。這是 MVP 唯一的部署目標 — 見 `docs/design/architecture.md` §13.1（MVP 不用 Kubernetes、不用託管雲端服務）。
+本文件定義在本機執行 IFOC 所有 MVP 服務的 Docker Compose 設定：frontend、backend、MongoDB、Kafka，以及 `lgtm` 可觀測性堆疊（Phase 1.1）。這是 MVP 唯一的部署目標 — 見 `docs/design/architecture.md` §13.1（MVP 不用 Kubernetes、不用託管雲端服務）。
 
 Kafka 從 MVP 第一天就開始運行，不是後續階段才加入 — 它是 `CLAUDE.md` 所描述的核心 `simulator → Kafka → consumers → MongoDB` 流程的事件骨幹，所以從一開始就跟其他服務放在同一個 Compose 檔裡。
 
@@ -18,8 +18,9 @@ Kafka 從 MVP 第一天就開始運行，不是後續階段才加入 — 它是 
 | `backend` | 由 `backend/` 建置（NestJS 模組化單體） | REST API、Kafka consumer、Insight Service。 | `3000` |
 | `mongodb` | `mongo:7` | 存放 `machine_events`、`machines`、`alerts`、`ai_summaries`。 | `27017` |
 | `kafka` | `apache/kafka:3.8.0` | 事件骨幹，topic `machine.events`。以 **KRaft 模式**運行 — 不需要獨立的 Zookeeper 容器。 | `9092` |
+| `lgtm` | `grafana/otel-lgtm:latest` | Demo 量級的可觀測性堆疊(Collector + Loki + Tempo + Prometheus + Grafana 全部在一個容器裡) — 見 `docs/product/product-roadmap.md` Phase 1.1。儲存為暫存性；這個容器不存在或停止時，平台照常運作。 | `3001`(Grafana UI)、`4318`(OTLP HTTP) |
 
-四個服務、沒有 Zookeeper — 選 KRaft 模式正是為了讓本機 MVP 的佔用維持在每個關注點一個容器（`docs/decisions/ADR-0001-use-kafka.md` 說明為什麼選 Kafka 本身；本文件只說明它在本機怎麼跑）。
+五個服務、沒有 Zookeeper — 選 KRaft 模式正是為了讓本機 MVP 的佔用維持在每個關注點一個容器（`docs/decisions/ADR-0001-use-kafka.md` 說明為什麼選 Kafka 本身；本文件只說明它在本機怎麼跑）。
 
 ---
 
@@ -55,6 +56,13 @@ services:
     volumes:
       - mongo_data:/data/db
 
+  lgtm:
+    image: grafana/otel-lgtm:latest
+    container_name: ifoc-lgtm
+    ports:
+      - "3001:3000" # Grafana UI（backend 已經佔用主機 :3000）
+      - "4318:4318" # OTLP HTTP receiver
+
   backend:
     build: ./backend
     container_name: ifoc-backend
@@ -66,10 +74,18 @@ services:
       MONGODB_URI: mongodb://mongodb:27017/ifoc
       KAFKA_BROKERS: kafka:9092
       KAFKA_TOPIC_MACHINE_EVENTS: machine.events
-      LLM_API_KEY: ${LLM_API_KEY}
+      LLM_PROVIDER: ${LLM_PROVIDER:-mock}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-}
+      OTEL_SERVICE_NAME: ifoc-backend
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4318
+      OTEL_SDK_DISABLED: ${OTEL_SDK_DISABLED:-false}
     depends_on:
       - kafka
       - mongodb
+      # 刻意不列 lgtm：backend 在任何時間點都不需要它就緒（OTLP 匯出不論啟動順序都
+      # fail-soft — 見 design.md D5），而且 depends_on 會讓 lgtm image pull 失敗
+      # 時（例如離線、registry rate limiting）連帶卡住 backend 自己的啟動。
 
   frontend:
     build: ./frontend
@@ -108,6 +124,9 @@ volumes:
 | `LLM_PROVIDER` | `backend` | Insight Service 要使用哪個 LLM adapter。預設為 `mock`（內建、不需 API key），讓本機開發與 demo 不需外部憑證即可運行；未知的值會讓啟動快速失敗。 |
 | `LLM_API_KEY` | `backend` | Insight Service 呼叫 LLM API 的憑證（`architecture.md` §7.6）。不進版控 — 透過本機 `.env` 檔或 shell 環境提供。`mock` provider 不使用。 |
 | `LLM_MODEL` | `backend` | 傳給所設定 LLM provider 的模型識別碼。`mock` provider 不使用。 |
+| `OTEL_SERVICE_NAME` | `backend` | 附加在所有輸出的 trace／metric／log 上的服務名稱(`backend/src/instrumentation.ts`)。預設為 `ifoc-backend`。 |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | `backend` | OTel SDK 透過 OTLP/HTTP 送出 trace／metric／log 的目標基底 URL。預設為 `http://localhost:4318`(OTel 規格的預設值);在 Compose 中設為 `http://lgtm:4318`。連不到也無妨 — exporter 會緩衝後丟棄(Phase 1.1，`openspec/changes/add-observability/design.md` D5)。 |
+| `OTEL_SDK_DISABLED` | `backend` | 設為 `true` 會完全停用 OTel SDK(不輸出 trace／metric／log，也不做 auto-instrumentation)。預設為 `false`。 |
 | `VITE_API_BASE_URL` | `frontend` | 儀表板連到後端的基底 URL，對應 `docs/design/api.md` §2.1。 |
 
 `LLM_API_KEY` 應透過本機 `.env` 檔（已 gitignore）或 shell 環境提供 — 絕不提交進 repository。
@@ -120,7 +139,7 @@ volumes:
 docker compose up -d
 ```
 
-預期順序：`kafka` 與 `mongodb` 先啟動（無依賴），接著 `backend`（依賴兩者），最後 `frontend`（依賴 `backend`）。後端啟動時應重試 Kafka/MongoDB 連線而不是崩潰循環，因為 Compose 的 `depends_on` 只等容器啟動，不等 Kafka/MongoDB 真正可以接受連線。
+預期順序：`kafka` 與 `mongodb` 先啟動（無依賴），接著 `backend`（依賴兩者），最後 `frontend`（依賴 `backend`）。後端啟動時應重試 Kafka/MongoDB 連線而不是崩潰循環，因為 Compose 的 `depends_on` 只等容器啟動，不等 Kafka/MongoDB 真正可以接受連線。`lgtm` 是獨立啟動的，跟 `backend` 之間沒有任何依賴關係 —— 這是刻意設計：backend 不會等它啟動（所以 `lgtm` image pull 失敗或很慢都不會卡住 backend），而且不論 `lgtm` 存在、不存在、停止或被移除,backend 都能正常服務,見 `add-observability/design.md` D5。
 
 要重置所有本機資料（事件、投影、Kafka log）：
 

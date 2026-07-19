@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { EachMessagePayload, Kafka } from 'kafkajs';
+import { Kafka } from 'kafkajs';
 import { Model } from 'mongoose';
 import { KAFKA_CLIENT } from '../shared/kafka/kafka-client.provider';
 import { KafkaConsumerBase } from '../shared/kafka/kafka-consumer.base';
@@ -36,14 +36,9 @@ export class AlertConsumerService extends KafkaConsumerBase {
     super(kafka, 'alert-service-group', env.kafkaTopicMachineEvents);
   }
 
-  protected async handleMessage({
-    message,
-  }: EachMessagePayload): Promise<void> {
-    if (!message.value) return;
-    const event = JSON.parse(message.value.toString()) as MachineEvent;
-
+  protected async handleMessage(event: MachineEvent): Promise<boolean> {
     const alert = await this.resolveAlert(event);
-    if (!alert) return;
+    if (!alert) return false;
 
     try {
       await this.alertModel.create({
@@ -56,10 +51,11 @@ export class AlertConsumerService extends KafkaConsumerBase {
         createdAt: event.producedAt,
         resolvedAt: null,
       });
+      return true;
     } catch (err: unknown) {
       if (isDuplicateKeyError(err)) {
         // Already created for this eventId — idempotent no-op.
-        return;
+        return false;
       }
       throw err;
     }

@@ -7,6 +7,7 @@
 | Messaging | Kafka (topic: `machine.events`, key: `machineId`) |
 | Database | MongoDB |
 | AI | LLM API (direct summaries; no RAG in MVP) |
+| Observability | OpenTelemetry + `grafana/otel-lgtm` (Phase 1.1; demo-weight, optional at runtime) |
 | Local Runtime | Docker Compose |
 
 ## Known Gotchas

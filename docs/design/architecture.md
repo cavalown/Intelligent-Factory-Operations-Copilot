@@ -172,7 +172,7 @@ Simulator
 | Messaging | Kafka | Acts as the event backbone for asynchronous processing and future service decoupling. |
 | Database | MongoDB | Stores flexible machine events, machine projections, alerts, and AI summaries. |
 | AI | LLM API | Generates operational summaries and recommendations from event context. |
-| Local Runtime | Docker Compose | Runs frontend, backend, Kafka, and MongoDB locally for MVP development. |
+| Local Runtime | Docker Compose | Runs frontend, backend, Kafka, MongoDB, and the `lgtm` observability stack (Phase 1.1) locally for MVP development. |
 
 The selected stack supports fast MVP delivery while keeping a realistic path toward production architecture.
 
@@ -679,6 +679,7 @@ frontend
 backend
 mongodb
 kafka (KRaft mode — no separate Zookeeper service)
+lgtm (grafana/otel-lgtm — Phase 1.1 observability stack; demo-weight, optional at runtime)
 ```
 
 See `docs/deployment/docker-compose.md` for the full Compose file and `docs/decisions/ADR-0001-use-kafka.md` for why Kafka was chosen.

@@ -13,13 +13,16 @@ flowchart TD
         Backend["backend<br/>NestJS modular monolith<br/>:3000"]
         Mongo["mongodb<br/>mongo:7<br/>:27017"]
         Kafka["kafka<br/>apache/kafka:3.8.0 (KRaft)<br/>PLAINTEXT :9092 / PLAINTEXT_HOST :9093"]
+        Lgtm["lgtm<br/>grafana/otel-lgtm (Phase 1.1)<br/>Grafana :3001, OTLP HTTP :4318"]
     end
 
     Host -->|"localhost:5173"| Frontend
     Host -->|"localhost:3000/api"| Backend
     Host -->|"localhost:27017 (debugging)"| Mongo
     Host -->|"localhost:9093 (debugging)"| Kafka
+    Host -->|"localhost:3001 (Grafana UI)"| Lgtm
 
     Frontend -->|"VITE_API_BASE_URL"| Backend
     Backend -->|"MONGODB_URI mongodb:27017"| Mongo
     Backend -->|"KAFKA_BROKERS kafka:9092"| Kafka
+    Backend -->|"OTEL_EXPORTER_OTLP_ENDPOINT http://lgtm:4318 (optional, fail-soft)"| Lgtm

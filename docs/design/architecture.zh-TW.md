@@ -172,7 +172,7 @@ Simulator
 | 訊息系統 | Kafka | 作為非同步處理與未來服務解耦的事件骨幹。 |
 | 資料庫 | MongoDB | 儲存彈性的機台事件、機台投影、告警與 AI 摘要。 |
 | AI | LLM API | 從事件脈絡產生營運摘要與建議。 |
-| 本機執行環境 | Docker Compose | 在本機執行 frontend、backend、Kafka 與 MongoDB，供 MVP 開發。 |
+| 本機執行環境 | Docker Compose | 在本機執行 frontend、backend、Kafka、MongoDB，以及 `lgtm` 可觀測性堆疊(Phase 1.1)，供 MVP 開發。 |
 
 所選的技術棧支持快速的 MVP 交付，同時保留通往正式生產架構的務實路徑。
 
@@ -679,6 +679,7 @@ frontend
 backend
 mongodb
 kafka (KRaft mode — no separate Zookeeper service)
+lgtm (grafana/otel-lgtm — Phase 1.1 可觀測性堆疊；demo 量級，執行期非必要)
 ```
 
 完整的 Compose 檔見 `docs/deployment/docker-compose.md`，為什麼選 Kafka 見 `docs/decisions/ADR-0001-use-kafka.md`。

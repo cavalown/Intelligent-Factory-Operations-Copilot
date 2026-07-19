@@ -27,6 +27,17 @@ services:
     volumes:
       - mongo_data:/data/db
 
+  # Demo-weight Grafana observability stack (Collector + Loki + Tempo +
+  # Prometheus + Grafana in one image) — openspec/changes/add-observability/design.md D3.
+  # Ephemeral storage by design; the backend runs identically if this
+  # container is stopped or absent (design.md D5).
+  lgtm:
+    image: grafana/otel-lgtm:latest
+    container_name: ifoc-lgtm
+    ports:
+      - "3001:3000" # Grafana UI (backend already owns host :3000)
+      - "4318:4318" # OTLP HTTP receiver
+
   backend:
     build: ./backend
     container_name: ifoc-backend
@@ -42,9 +53,16 @@ services:
       LLM_PROVIDER: ${LLM_PROVIDER:-mock}
       LLM_API_KEY: ${LLM_API_KEY:-}
       LLM_MODEL: ${LLM_MODEL:-}
+      OTEL_SERVICE_NAME: ifoc-backend
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4318
+      OTEL_SDK_DISABLED: ${OTEL_SDK_DISABLED:-false}
     depends_on:
       - kafka
       - mongodb
+      # lgtm deliberately excluded: backend doesn't need it ready at any
+      # point (OTLP export is fail-soft regardless of start order — design.md
+      # D5), and depends_on would otherwise block backend's own startup if
+      # the lgtm image fails to pull (e.g. offline, registry rate limiting).
 
   frontend:
     build: ./frontend

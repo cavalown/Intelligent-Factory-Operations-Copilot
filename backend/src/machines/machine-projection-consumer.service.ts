@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { EachMessagePayload, Kafka } from 'kafkajs';
+import { Kafka } from 'kafkajs';
 import { Model } from 'mongoose';
 import { KAFKA_CLIENT } from '../shared/kafka/kafka-client.provider';
 import { KafkaConsumerBase } from '../shared/kafka/kafka-consumer.base';
@@ -42,19 +42,14 @@ export class MachineProjectionConsumerService extends KafkaConsumerBase {
     super(kafka, 'machine-service-group', env.kafkaTopicMachineEvents);
   }
 
-  protected async handleMessage({
-    message,
-  }: EachMessagePayload): Promise<void> {
-    if (!message.value) return;
-    const event = JSON.parse(message.value.toString()) as MachineEvent;
-
+  protected async handleMessage(event: MachineEvent): Promise<boolean> {
     const machine = await this.machineModel.findOne({
       machineId: event.machineId,
     });
-    if (!machine) return;
+    if (!machine) return false;
 
     // Idempotency: only guards immediate repeats, per machine-schema.md §8.
-    if (machine.lastEventId === event.eventId) return;
+    if (machine.lastEventId === event.eventId) return false;
 
     const previousStatus = machine.status;
 
@@ -111,7 +106,7 @@ export class MachineProjectionConsumerService extends KafkaConsumerBase {
         this.logger.warn(
           `Skipping unrecognized eventType for event ${(event as MachineEvent).eventId}`,
         );
-        return;
+        return false;
     }
 
     machine.lastEventId = event.eventId;
@@ -120,6 +115,7 @@ export class MachineProjectionConsumerService extends KafkaConsumerBase {
     await this.recordTransitionIfChanged(machine, previousStatus, event);
 
     await machine.save();
+    return true;
   }
 
   // Transitions are a rebuildable secondary projection — their write failure

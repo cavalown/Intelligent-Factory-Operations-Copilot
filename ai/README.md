@@ -16,6 +16,7 @@ Tool-agnostic AI-agent guidance for IFOC (Intelligent Factory Operations Copilot
 | [documentation-sync.md](rules/documentation-sync.md) | Docs are the source of truth; keep code and `docs/` in sync. |
 | [module-boundaries.md](rules/module-boundaries.md) | Module structure, persistence ownership, monolith-by-default. |
 | [kafka-consumer-conventions.md](rules/kafka-consumer-conventions.md) | Consumer group IDs, idempotency guards. |
+| [observability-conventions.md](rules/observability-conventions.md) | What's automatic (logging, trace correlation, the events-processed metric) vs. what new code must do deliberately (extend `KafkaConsumerBase`, return real success/skip, watch error-classifier coverage). |
 | [error-handling.md](rules/error-handling.md) | HTTP status/error codes must match `api.md` §6. |
 | [code-style.md](rules/code-style.md) | TypeScript, lint/format baseline, NestJS layering. |
 | [commit-messages.md](rules/commit-messages.md) | `<type>: <description>` convention. |

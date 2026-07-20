@@ -32,10 +32,15 @@ export interface StatusChangedPayload {
   reason?: string;
 }
 
+// Rule Engine's enriched-topic classification field (add-rule-engine
+// design.md D3), scoped to STATUS_CHANGED so the type system rejects
+// reading/setting it on any other eventType — mirroring how `payload`
+// itself is already scoped per event type. Absent on events consumed
+// directly from the raw machine.events topic.
 export type StatusChangedEvent = MachineEventEnvelope<
   'STATUS_CHANGED',
   StatusChangedPayload
->;
+> & { isSensorFailure?: boolean };
 
 // docs/design/event-schema.md §5.2
 export interface TemperatureReportedPayload {
@@ -43,10 +48,12 @@ export interface TemperatureReportedPayload {
   unit: string;
 }
 
+// See StatusChangedEvent's comment above — same rationale, scoped to
+// TEMPERATURE_REPORTED.
 export type TemperatureReportedEvent = MachineEventEnvelope<
   'TEMPERATURE_REPORTED',
   TemperatureReportedPayload
->;
+> & { temperatureExceedsThreshold?: boolean };
 
 // docs/design/event-schema.md §5.3
 export interface ErrorOccurredPayload {

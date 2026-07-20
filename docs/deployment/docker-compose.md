@@ -74,6 +74,7 @@ services:
       MONGODB_URI: mongodb://mongodb:27017/ifoc
       KAFKA_BROKERS: kafka:9092
       KAFKA_TOPIC_MACHINE_EVENTS: machine.events
+      KAFKA_TOPIC_MACHINE_EVENTS_ENRICHED: machine.events.enriched
       LLM_PROVIDER: ${LLM_PROVIDER:-mock}
       LLM_API_KEY: ${LLM_API_KEY:-}
       LLM_MODEL: ${LLM_MODEL:-}
@@ -111,7 +112,7 @@ volumes:
 * **Topic auto-creation**: `KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"` means `machine.events` is created automatically the first time a producer publishes to it. No init container or manual topic-creation step is required for the MVP.
 * **Partitions**: an auto-created topic gets the broker's default partition count (1, unless overridden). One partition is sufficient for MVP event volume and trivially preserves ordering. Keying messages by `machineId` (`event-schema.md` §8) is still correct practice even with one partition — if partition count increases later for throughput, per-machine ordering is preserved automatically without any producer/consumer code change.
 * **Internal vs. host addressing (dual listeners)**: Kafka exposes two separate listeners on purpose. `PLAINTEXT` (`kafka:9092`, advertised as `kafka:9092`) is for container-to-container traffic — this is what the containerized `backend` service uses. `PLAINTEXT_HOST` (`localhost:9093`, advertised as `localhost:9093`) is for anything connecting from the host machine — a local Kafka CLI, or a `backend` process run natively instead of in Docker (see `docs/deployment/local-development.md`). A single listener does not work for both cases: after the initial connection, a Kafka client reconnects using whatever address the broker *advertises*, and a host process cannot resolve the Docker-internal hostname `kafka`.
-* **Known cold-start race**: on a fresh `docker compose up --build backend`, all 3 of the backend's independent consumer groups (`event-service-group`, `machine-service-group`, `alert-service-group`) request the group coordinator from the single-broker cluster at once. This has been observed to occasionally throw an unretried `KafkaJSProtocolError` that crashes the backend process on its very first boot. `restart: on-failure` on the `backend` service (added in the Compose file above) recovers automatically — the retry always succeeds once the broker's coordinator metadata has settled. This is a single-broker-dev-cluster quirk, not an application bug.
+* **Known cold-start race**: on a fresh `docker compose up --build backend`, all 4 of the backend's independent consumer groups (`event-service-group`, `machine-service-group`, `alert-service-group`, `rules-service-group`) request the group coordinator from the single-broker cluster at once. This has been observed to occasionally throw an unretried `KafkaJSProtocolError` that crashes the backend process on its very first boot. `restart: on-failure` on the `backend` service (added in the Compose file above) recovers automatically — the retry always succeeds once the broker's coordinator metadata has settled. This is a single-broker-dev-cluster quirk, not an application bug.
 
 ---
 
@@ -122,6 +123,7 @@ volumes:
 | `MONGODB_URI` | `backend` | MongoDB connection string. |
 | `KAFKA_BROKERS` | `backend` | Kafka bootstrap server address. |
 | `KAFKA_TOPIC_MACHINE_EVENTS` | `backend` | Topic name, kept as a variable rather than hardcoded so `docs/design/event-schema.md` §8's naming convention can evolve without a code change. |
+| `KAFKA_TOPIC_MACHINE_EVENTS_ENRICHED` | `backend` | Topic the Rule Engine republishes classified events to; Machine Service and Alert Service consume this instead of `KAFKA_TOPIC_MACHINE_EVENTS` (`openspec/changes/add-rule-engine/design.md` D1). Defaults to `machine.events.enriched`, auto-created the same way as the raw topic. |
 | `LLM_PROVIDER` | `backend` | Which Insight Service LLM adapter to use. Defaults to `mock` (built-in, no API key needed) so local dev and the demo run without external credentials; an unknown value fails startup fast. |
 | `LLM_API_KEY` | `backend` | Credential for the Insight Service's LLM API calls (`architecture.md` §7.6). Not committed — supplied via a local `.env` file or shell environment. Unused by the `mock` provider. |
 | `LLM_MODEL` | `backend` | Model identifier passed to the configured LLM provider. Unused by the `mock` provider. |

@@ -5,6 +5,7 @@ import { AppService } from './app.service';
 import { EventsModule } from './events/events.module';
 import { MachinesModule } from './machines/machines.module';
 import { AlertsModule } from './alerts/alerts.module';
+import { RulesModule } from './rules/rules.module';
 import { InsightsModule } from './insights/insights.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { SimulatorModule } from './simulator/simulator.module';
@@ -20,6 +21,7 @@ import { SharedModule } from './shared/shared.module';
     EventsModule,
     MachinesModule,
     AlertsModule,
+    RulesModule,
     InsightsModule,
     DashboardModule,
     SimulatorModule,

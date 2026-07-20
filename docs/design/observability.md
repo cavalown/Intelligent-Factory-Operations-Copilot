@@ -14,7 +14,7 @@ Everything is auto-instrumented via `@opentelemetry/auto-instrumentations-node`,
 
 | Signal | Source | Covers |
 | --- | --- | --- |
-| Traces | `instrumentation-http`, `instrumentation-express`, `instrumentation-mongoose`, `instrumentation-kafkajs`, `instrumentation-nestjs-core` | Every HTTP request, every Mongo operation, every Kafka produce/consume — including W3C trace-context propagation through Kafka message headers, so one trace spans an HTTP request, the Kafka publish, and all three consumers' processing. |
+| Traces | `instrumentation-http`, `instrumentation-express`, `instrumentation-mongoose`, `instrumentation-kafkajs`, `instrumentation-nestjs-core` | Every HTTP request, every Mongo operation, every Kafka produce/consume — including W3C trace-context propagation through Kafka message headers, so one trace spans an HTTP request, the Kafka publish, and all four consumers' processing. |
 | Logs | `instrumentation-pino` (bundled in the same package) | Injects `trace_id`/`span_id`/`trace_flags` into every pino log record written while a span is active, and forwards pino log records into the OTel logs pipeline — both automatic; no manual mixin or transport was written for this. |
 | Metrics | Auto-instrumentation (HTTP/Mongoose/kafkajs default metrics) + one custom counter | `ifoc.events.processed` (§4) is the only application-defined metric. |
 
@@ -29,17 +29,19 @@ Two independent identifiers travel with every event, and neither replaces the ot
 - **`trace_id`/`span_id`** (W3C trace context) answer *"which spans belong to this request"* — assigned by OTel, propagated automatically through HTTP headers and Kafka message headers, present on every log line and every span.
 - **`correlationId`** (the event envelope field, `docs/design/event-schema.md` §3) answers *"which business flow is this"* — assigned by the producer, stored with the event, and survives replay/redelivery in a way a trace ID doesn't (a redelivered message gets a *new* trace, but the *same* `correlationId`).
 
-Each of the three Kafka consumers' processing spans carries `ifoc.correlation_id`, `ifoc.event_id`, and `ifoc.event_type` as span attributes (set once, in `KafkaConsumerBase`, shared by all three consumer subclasses — not duplicated per subclass). This is what makes it possible to search Tempo by `correlationId` and land on the exact trace a specific business event produced, even though the trace's own ID was never exposed to the event producer.
+Each of the four Kafka consumers' processing spans carries `ifoc.correlation_id`, `ifoc.event_id`, and `ifoc.event_type` as span attributes (set once, in `KafkaConsumerBase`, shared by all four consumer subclasses — not duplicated per subclass). This is what makes it possible to search Tempo by `correlationId` and land on the exact trace a specific business event produced, even though the trace's own ID was never exposed to the event producer.
 
 ---
 
 ## 4. The `ifoc.events.processed` Counter
 
-Labels: `eventType` (the event's `eventType` field) and `consumerGroup` (`event-service-group` / `machine-service-group` / `alert-service-group`).
+Labels: `eventType` (the event's `eventType` field) and `consumerGroup` (`event-service-group` / `machine-service-group` / `alert-service-group` / `rules-service-group`).
 
 **Semantics:** incremented once per consumer group, only when that consumer's `handleMessage` caused a real effect — a new document, an updated projection, a new alert. It is **not** incremented for a deliberate no-op: an unrecognized `eventType`, a redelivered/duplicate `eventId`, an event for an unknown `machineId`, or (for the alert consumer specifically) an event that doesn't warrant an alert. `handleMessage`'s abstract signature returns `Promise<boolean>` for exactly this reason — `true` only on genuine effect — after an earlier version of this metric miscounted all of the above as "processed" (see `docs/retrospectives/2026-07-observability-review-lessons.md` Pattern 2 for the full story and why it's a trap worth naming).
 
-Practically: three consumer groups process every message (each has its own independent subscription — `ai/rules/kafka-consumer-conventions.md`), so one event can legitimately increment 0, 1, 2, or 3 of the three group counters depending on what each consumer actually did with it. A `TEMPERATURE_REPORTED` event above threshold increments all three (stored, projected, alerted); the same event type below threshold increments only two (stored, projected — no alert).
+Practically: all four consumer groups eventually process every message (each has its own independent subscription — `ai/rules/kafka-consumer-conventions.md`; `machine-service-group` and `alert-service-group` see it one hop later, via `rules-service-group`'s republish), so one event can legitimately increment 0 to 4 of the four group counters depending on what each consumer actually did with it. `rules-service-group` increments whenever it actually classified the event — it does *not* increment for the two "can't classify" no-ops `ai/rules/observability-conventions.md` names (an unknown `machineId`, a non-finite temperature), matching how the other three consumers treat those exact cases; a message still gets republished either way (downstream needs it unclassified rather than dropped), but the counter reflects classification, not just republishing. A `TEMPERATURE_REPORTED` event above threshold for a known machine increments all four (classified+republished, stored, projected, alerted); the same event type below threshold increments three (classified+republished, stored, projected — no alert); the same event type for an unknown machine increments only two (stored, projected — `rules-service-group` and `alert-service-group` both treat it as a no-op).
+
+`rules-service-group` has no persistence of its own (`ai/rules/module-boundaries.md` — it's an enrichment consumer, not a projection), so unlike the other three consumer groups it cannot detect a redelivered/duplicate `eventId` and skip re-counting it — a crash between publishing the enriched event and committing the source offset (an accepted, documented possibility per `add-rule-engine/design.md`'s Risks section) will republish and re-count that event a second time. This is a deliberate, scoped exception to this section's general "false for every no-op, including idempotent duplicates" semantics, not an oversight.
 
 ---
 
@@ -77,6 +79,8 @@ See `docs/deployment/docker-compose.md` §5 for the full registry. The two that 
 ---
 
 ## 8. Worked Example
+
+*Captured before `openspec/changes/add-rule-engine`. The correlation/log/metric mechanics below are unchanged, but the topology has an added hop: `machine-service-group` and `alert-service-group` now consume `machine.events.enriched`, republished by a fourth consumer group, `rules-service-group`, which consumes the raw `machine.events` trace shown here — see `docs/design/event-schema.md` §3.3.*
 
 A real `POST /simulator/events` for a `TEMPERATURE_REPORTED` event at 88°C (above `M-001`'s 80°C threshold), `correlationId: "corr_demo_show_..."`:
 

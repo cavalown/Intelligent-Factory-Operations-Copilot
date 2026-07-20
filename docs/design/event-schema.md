@@ -115,6 +115,17 @@ The event only says that a temperature was reported. The Alert Service or Machin
 
 This keeps producer responsibility simple and prevents duplicated business logic across producers.
 
+### 3.3 Rule Engine Enrichment Fields
+
+Two additional envelope fields exist only on `machine.events.enriched`, the topic the Rule Engine republishes to — never on the raw `machine.events` topic a producer writes to (`openspec/changes/add-rule-engine/design.md` D1–D3):
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `temperatureExceedsThreshold` | boolean | No | Present only on a republished `TEMPERATURE_REPORTED` event; omitted if the machine is unknown. |
+| `isSensorFailure` | boolean | No | Present only on a republished `STATUS_CHANGED` event. |
+
+Every other envelope field, including `eventId`, is carried through unchanged from the source event (§3.1) — the enriched event is a richer copy, not a new event. Machine Service and Alert Service consume `machine.events.enriched` and read these fields instead of re-deriving them from `payload`; Event Service is unaffected, since it still consumes raw `machine.events`.
+
 ---
 
 ## 4. Event Types

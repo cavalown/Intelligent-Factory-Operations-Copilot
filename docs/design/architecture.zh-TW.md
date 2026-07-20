@@ -734,13 +734,14 @@ backend/
 ├── machines/
 ├── events/
 ├── alerts/
+├── rules/        # Rule Engine：enrichment consumer，不擁有任何持久化
 ├── insights/
 ├── dashboard/    # API-layer composition only (§7.7) — owns no persistence
 ├── simulator/
 └── shared/
 ```
 
-每個模組應擁有自己的領域邏輯與持久化存取。`dashboard/` 是印證規則的例外：它是 §7.7 的 API 層聚合接縫，組合其他模組匯出的服務的讀取（由 `dashboard-operational-metrics` 變更在 `/dashboard/stats` 開始橫跨 machines 與 events 領域時加入）；它不擁有任何 model 或 collection。
+每個模組應擁有自己的領域邏輯與持久化存取。`dashboard/` 是印證規則的例外：它是 §7.7 的 API 層聚合接縫，組合其他模組匯出的服務的讀取（由 `dashboard-operational-metrics` 變更在 `/dashboard/stats` 開始橫跨 machines 與 events 領域時加入）；它不擁有任何 model 或 collection。`rules/` 是另一個例外：它只計算一次分類並重新發布（`add-rule-engine` design.md），同樣不擁有任何 model 或 collection。
 
 ### 14.2 服務抽取路徑
 

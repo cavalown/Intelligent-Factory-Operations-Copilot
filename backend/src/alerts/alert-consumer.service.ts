@@ -8,36 +8,26 @@ import { KafkaConsumerBase } from '../shared/kafka/kafka-consumer.base';
 import { env } from '../shared/config/env.config';
 import { isDuplicateKeyError } from '../shared/database/mongo-error.util';
 import { MachineEvent } from '../shared/types/machine-event.types';
-import { MachinesService } from '../machines/machines.service';
 import { Alert, AlertDocument, AlertSeverity } from './schemas/alert.schema';
-
-// MVP rule (design.md Decision 1 of remaining-mvp-event-types): any
-// STATUS_CHANGED to WARNING is treated as sensor failure. Deliberately not
-// shared with machine-projection-consumer.service.ts's identically-named
-// function — see docs/design/machine-schema.md §5.4 and
-// openspec/changes/duplicate-logic-cleanup/design.md Decision 2. A contract
-// test asserts the two stay in agreement.
-export function isStatusChangedSensorFailure(currentStatus: string): boolean {
-  return currentStatus === 'WARNING';
-}
 
 // Alert Service: derives alert severity from event type + payload, per the
 // Alert Rules table (CLAUDE.md / ai/context/alert-rules.md /
-// docs/design/architecture.md §9.3). Own consumer group per
+// docs/design/architecture.md §9.3). Consumes the Rule Engine's enriched
+// topic, reading its classification instead of re-deriving it
+// (openspec/changes/add-rule-engine/design.md D5). Own consumer group per
 // ai/rules/kafka-consumer-conventions.md.
 @Injectable()
 export class AlertConsumerService extends KafkaConsumerBase {
   constructor(
     @Inject(KAFKA_CLIENT) kafka: Kafka,
-    private readonly machinesService: MachinesService,
     @InjectModel(Alert.name)
     private readonly alertModel: Model<AlertDocument>,
   ) {
-    super(kafka, 'alert-service-group', env.kafkaTopicMachineEvents);
+    super(kafka, 'alert-service-group', env.kafkaTopicMachineEventsEnriched);
   }
 
   protected async handleMessage(event: MachineEvent): Promise<boolean> {
-    const alert = await this.resolveAlert(event);
+    const alert = this.resolveAlert(event);
     if (!alert) return false;
 
     try {
@@ -62,13 +52,12 @@ export class AlertConsumerService extends KafkaConsumerBase {
   }
 
   // docs/design/architecture.md §9.3 — returns null when no alert should be created.
-  private async resolveAlert(
+  private resolveAlert(
     event: MachineEvent,
-  ): Promise<{ severity: AlertSeverity; message: string } | null> {
+  ): { severity: AlertSeverity; message: string } | null {
     switch (event.eventType) {
       case 'STATUS_CHANGED': {
-        if (!isStatusChangedSensorFailure(event.payload.currentStatus))
-          return null;
+        if (!event.isSensorFailure) return null;
         return {
           severity: 'WARNING',
           message: `Machine status changed to WARNING: ${event.payload.reason ?? 'no reason given'}.`,
@@ -82,9 +71,7 @@ export class AlertConsumerService extends KafkaConsumerBase {
           );
           return null;
         }
-        const machine = await this.machinesService.findRaw(event.machineId);
-        if (!machine) return null;
-        if (temperature <= machine.temperatureThreshold) return null;
+        if (!event.temperatureExceedsThreshold) return null;
         return {
           severity: 'WARNING',
           message: `Temperature ${temperature}${unit} exceeds warning threshold.`,

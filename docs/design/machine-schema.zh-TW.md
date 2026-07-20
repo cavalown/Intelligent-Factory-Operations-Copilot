@@ -118,13 +118,15 @@ healthScore = clamp(healthScore + delta, 0, 100)
 
 `docs/product/product-roadmap.md` Phase 2（Event Streaming）把「Rule Engine」列為功能。實作該階段時，這些特定值 — 五個健康分數增減與五個狀態嚴重度等級 — 就是應該從程式碼移到外部可設定規則資料的具體規則。任何開始 Phase 2 的人都應把本段當成「先外部化什麼」的清單。
 
-### 5.4 一個已知且接受的後果：詮釋邏輯在 consumer 之間重複
+### 5.4 已解決：詮釋邏輯在 consumer 之間重複
 
-因為 §4.3/§5.2 的規則是每個服務各自寫死（§5.3）而非只計算一次，對於效果有條件的那兩種事件類型，Machine Service 與 Alert Service 各自獨立地從同一個原始事件重新推導同樣的分類：「`TEMPERATURE_REPORTED` 的 `temperature` 是否超過 `temperatureThreshold`？」以及「`STATUS_CHANGED` 的 `currentStatus` 是否表示感測器故障（即等於 `WARNING`）？」兩個服務今天得到相同結論，但沒有任何結構性保證它們保持同步 — 一次 code review 就抓到其中一例漂移成兩服務間相反的布林邏輯（`machine-projection-consumer.service.ts` 檢查 `currentStatus === 'WARNING'`，`alert-consumer.service.ts` 檢查 `currentStatus !== 'WARNING'`）。
+**狀態：已被 `openspec/changes/add-rule-engine` 解決。** 本節原本記錄的是一個 MVP 階段接受的風險（Machine Service 與 Alert Service 各自獨立重新推導同一分類）以及一個過渡期緩解措施（契約測試）。兩者現在都已成為歷史 — 下方描述的、作為最終解法的 Rule Engine 已經上線，讓它變得多餘的那個契約測試也已被刪除。保留本節是為了記錄 Rule Engine *為什麼*存在；目前的架構請見 `openspec/changes/add-rule-engine/design.md`。
 
-這與 ML 基礎設施團隊所說的 **training-serving skew** 是同一類問題 — 兩個系統各自從同一原始輸入重新推導同一特徵，因為衍生值沒有單一真實來源而逐漸漂移。規模化下的標準解法（Feature Store 或 Kafka Streams/ksqlDB 富化拓撲存在的目的）是：把衍生事實計算一次、發布出去，讓每個 consumer 讀同一個計算結果而不是重新推導。這正是 Phase 2 的 Rule Engine 應該為 IFOC 做的 — 不只是依 §5.3 外部化增減／等級的*數值*，而是把*分類邏輯本身*外部化到一個地方（例如一個富化 consumer，把 `machine.events` 附加衍生分類後重新發布，Machine Service 與 Alert Service 之後只負責讀取）。
+因為 §4.3/§5.2 的規則曾經是每個服務各自寫死（§5.3）而非只計算一次，對於效果有條件的那兩種事件類型，Machine Service 與 Alert Service 各自獨立地從同一個原始事件重新推導同樣的分類：「`TEMPERATURE_REPORTED` 的 `temperature` 是否超過 `temperatureThreshold`？」以及「`STATUS_CHANGED` 的 `currentStatus` 是否表示感測器故障（即等於 `WARNING`）？」兩個服務曾經得到相同結論，但沒有任何結構性保證它們保持同步 — 一次 code review 就抓到其中一例漂移成兩服務間相反的布林邏輯（`machine-projection-consumer.service.ts` 檢查 `currentStatus === 'WARNING'`，`alert-consumer.service.ts` 檢查 `currentStatus !== 'WARNING'`）。
 
-**在 Phase 2 之前**，`ai/rules/module-boundaries.md` 明確禁止把商業邏輯放進 `shared/`（「No business logic lives there」），所以這個重複不能用抽出共用函式來修 — 那會悄悄打開這條規則正要防止的那個洞。過渡期的緩解是一個**契約測試**：一組共用的事件 fixture，對兩個服務各自獨立的分類邏輯做斷言，讓未來只改了一邊、沒有鏡像到另一邊的詮釋修改會讓測試失敗，而不是無聲漂移。這讓兩個服務保持結構上獨立（符合刻意的「獨立 consumer group」架構決策），同時仍能抓到分歧 — 是 Phase 2 富化模式免費提供的同一保證的輕量版。
+這曾與 ML 基礎設施團隊所說的 **training-serving skew** 是同一類問題 — 兩個系統各自從同一原始輸入重新推導同一特徵，因為衍生值沒有單一真實來源而逐漸漂移。規模化下的標準解法（Feature Store 或 Kafka Streams/ksqlDB 富化拓撲存在的目的）是：把衍生事實計算一次、發布出去，讓每個 consumer 讀同一個計算結果而不是重新推導。**現在系統就是這樣運作的**：一個 Rule Engine（`backend/src/rules/`）訂閱原始的 `machine.events` topic，計算一次這兩個分類，並附加衍生欄位後重新發布到 `machine.events.enriched`；Machine Service 與 Alert Service 現在訂閱這個富化後的 topic,只負責讀取分類結果,不再重新推導。
+
+在這上線之前,`ai/rules/module-boundaries.md` 禁止把商業邏輯放進 `shared/` 的規則,意味著這個重複不能靠抽出共用函式來修 — 那會悄悄打開這條規則正要防止的那個洞,所以過渡期的緩解是一個**契約測試**(一組共用的事件 fixture,對兩個服務各自獨立的分類邏輯做斷言)。這個契約測試現在已經被刪除:只剩下 Rule Engine 這一個實作,已經沒有兩個獨立的東西可以拿來比較了。
 
 ---
 

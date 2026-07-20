@@ -14,7 +14,7 @@
 
 | 訊號 | 來源 | 涵蓋範圍 |
 | --- | --- | --- |
-| Traces | `instrumentation-http`、`instrumentation-express`、`instrumentation-mongoose`、`instrumentation-kafkajs`、`instrumentation-nestjs-core` | 每個 HTTP 請求、每個 Mongo 操作、每次 Kafka produce/consume —— 包含透過 Kafka 訊息 header 的 W3C trace-context 傳遞,所以一條 trace 可以貫穿一次 HTTP 請求、Kafka publish,以及三個 consumer 各自的處理。 |
+| Traces | `instrumentation-http`、`instrumentation-express`、`instrumentation-mongoose`、`instrumentation-kafkajs`、`instrumentation-nestjs-core` | 每個 HTTP 請求、每個 Mongo 操作、每次 Kafka produce/consume —— 包含透過 Kafka 訊息 header 的 W3C trace-context 傳遞,所以一條 trace 可以貫穿一次 HTTP 請求、Kafka publish,以及四個 consumer 各自的處理。 |
 | Logs | `instrumentation-pino`(同一個套件內建) | 在一個 span 是 active 的期間,把 `trace_id`/`span_id`/`trace_flags` 注入每一筆 pino log record,並把 pino log record 轉送進 OTel logs pipeline —— 兩者都是自動的;這次沒有為此寫任何手動的 mixin 或 transport。 |
 | Metrics | Auto-instrumentation(HTTP/Mongoose/kafkajs 的預設 metric)+ 一個自訂 counter | `ifoc.events.processed`(§4)是唯一一個應用層定義的 metric。 |
 
@@ -29,17 +29,17 @@
 - **`trace_id`/`span_id`**(W3C trace context)回答的是「哪些 span 屬於這次請求」—— 由 OTel 指派,透過 HTTP header 跟 Kafka 訊息 header 自動傳遞,出現在每一行 log 跟每一個 span 上。
 - **`correlationId`**(事件 envelope 的欄位,`docs/design/event-schema.md` §3)回答的是「這是哪一條業務流程」—— 由 producer 指派,跟事件一起存起來,而且能在重播/重新投遞時存活下來,這是 trace ID 做不到的(一則被重新投遞的訊息會拿到一條*新的* trace,但*相同的* `correlationId`)。
 
-三個 Kafka consumer 各自的處理 span 都帶著 `ifoc.correlation_id`、`ifoc.event_id`、`ifoc.event_type` 這三個 span 屬性(只在 `KafkaConsumerBase` 設定一次,三個 consumer 子類別共用,沒有各自重複)。這讓你可以直接用 `correlationId` 去查 Tempo,找到某個業務事件產生的那條確切 trace,即使 trace 本身的 ID 從來沒有暴露給事件的 producer。
+四個 Kafka consumer 各自的處理 span 都帶著 `ifoc.correlation_id`、`ifoc.event_id`、`ifoc.event_type` 這三個 span 屬性(只在 `KafkaConsumerBase` 設定一次,四個 consumer 子類別共用,沒有各自重複)。這讓你可以直接用 `correlationId` 去查 Tempo,找到某個業務事件產生的那條確切 trace,即使 trace 本身的 ID 從來沒有暴露給事件的 producer。
 
 ---
 
 ## 4. `ifoc.events.processed` 計數器
 
-標籤:`eventType`(事件的 `eventType` 欄位)與 `consumerGroup`(`event-service-group` / `machine-service-group` / `alert-service-group`)。
+標籤:`eventType`(事件的 `eventType` 欄位)與 `consumerGroup`(`event-service-group` / `machine-service-group` / `alert-service-group` / `rules-service-group`)。
 
 **語意:**每個 consumer group 各自遞增一次,而且只有在該 consumer 的 `handleMessage` 真正產生效果時才遞增 —— 新建一筆文件、更新了投影、建立了 alert。對於刻意的 no-op —— 無法辨識的 `eventType`、重新投遞/重複的 `eventId`、對應到不明 `machineId` 的事件,或者(對 alert consumer 來說)不需要建立 alert 的事件 —— **不會**遞增。`handleMessage` 的抽象簽章之所以回傳 `Promise<boolean>`,正是為了這個原因 —— 只有真正產生效果才是 `true` —— 因為這個 metric 早期的版本把上面這些情況全都誤計為「已處理」(完整經過與為什麼這是個值得指名的陷阱,見 `docs/retrospectives/2026-07-observability-review-lessons.md` 模式 2)。
 
-實際上:三個 consumer group 會各自處理每一則訊息(各自有獨立的訂閱 —— `ai/rules/kafka-consumer-conventions.md`),所以一個事件視各個 consumer 實際對它做了什麼,可能合理地讓三個 group counter 中的 0、1、2 或 3 個遞增。一個超過門檻的 `TEMPERATURE_REPORTED` 事件會讓三個都遞增(存了歷史、更新了投影、建立了 alert);同樣事件型別但溫度在門檻以下,則只會讓兩個遞增(存了歷史、更新了投影 —— 沒有 alert)。
+實際上:四個 consumer group 最終都會處理到每一則訊息(各自有獨立的訂閱 —— `ai/rules/kafka-consumer-conventions.md`;`machine-service-group` 與 `alert-service-group` 是晚一個 hop 才看到,經由 `rules-service-group` 重新發布),所以一個事件視各個 consumer 實際對它做了什麼,可能合理地讓四個 group counter 中的 0 到 4 個遞增。`rules-service-group` 只要是格式正確的事件就會遞增,因為重新發布本身就是它的效果(`openspec/changes/add-rule-engine/design.md` §2.4)。一個超過門檻的 `TEMPERATURE_REPORTED` 事件會讓四個都遞增(重新發布、存了歷史、更新了投影、建立了 alert);同樣事件型別但溫度在門檻以下,則會讓三個遞增(重新發布、存了歷史、更新了投影 —— 沒有 alert)。
 
 ---
 
@@ -77,6 +77,8 @@
 ---
 
 ## 8. 實際案例
+
+*這個案例是在 `openspec/changes/add-rule-engine` 之前擷取的。下方的關聯／log／metric 機制沒有變,但拓撲多了一個 hop:`machine-service-group` 與 `alert-service-group` 現在訂閱的是 `machine.events.enriched`,由第四個 consumer group `rules-service-group` 重新發布——它訂閱的正是這裡展示的原始 `machine.events` trace,詳見 `docs/design/event-schema.md` §3.3。*
 
 一次真實的 `POST /simulator/events`,`TEMPERATURE_REPORTED` 事件、溫度 88°C(超過 `M-001` 的 80°C 門檻)、`correlationId: "corr_demo_show_..."`:
 

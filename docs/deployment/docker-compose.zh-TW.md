@@ -74,6 +74,7 @@ services:
       MONGODB_URI: mongodb://mongodb:27017/ifoc
       KAFKA_BROKERS: kafka:9092
       KAFKA_TOPIC_MACHINE_EVENTS: machine.events
+      KAFKA_TOPIC_MACHINE_EVENTS_ENRICHED: machine.events.enriched
       LLM_PROVIDER: ${LLM_PROVIDER:-mock}
       LLM_API_KEY: ${LLM_API_KEY:-}
       LLM_MODEL: ${LLM_MODEL:-}
@@ -110,7 +111,7 @@ volumes:
 * **Topic 自動建立**：`KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"` 表示 `machine.events` 會在 producer 第一次發布時自動建立。MVP 不需要 init 容器或手動建 topic 的步驟。
 * **分割區（Partitions）**：自動建立的 topic 會使用 broker 的預設分割區數（未覆寫時為 1）。一個分割區對 MVP 的事件量已足夠，而且天然保序。即使只有一個分割區，用 `machineId` 作為訊息 key（`event-schema.md` §8）仍是正確做法 — 之後若為了吞吐量增加分割區數，各機台內的順序會自動保留，producer/consumer 程式碼都不用改。
 * **內部 vs. 主機定址（雙 listener）**：Kafka 刻意曝露兩個獨立的 listener。`PLAINTEXT`（`kafka:9092`，advertised 為 `kafka:9092`）給容器對容器流量 — 容器化的 `backend` 服務用的就是這個。`PLAINTEXT_HOST`（`localhost:9093`，advertised 為 `localhost:9093`）給任何從主機連進來的東西 — 本機的 Kafka CLI，或原生執行而非跑在 Docker 裡的 `backend` 程序（見 `docs/deployment/local-development.md`）。單一 listener 無法同時滿足兩種情境：初次連線之後，Kafka client 會改用 broker *advertised* 的位址重新連線，而主機程序無法解析 Docker 內部主機名稱 `kafka`。
-* **已知的冷啟動競態**：全新的 `docker compose up --build backend` 時，後端的 3 個獨立 consumer group（`event-service-group`、`machine-service-group`、`alert-service-group`）會同時向單一 broker 叢集請求 group coordinator。實際觀察到這偶爾會拋出一個未重試的 `KafkaJSProtocolError`，讓後端程序在第一次開機時就崩潰。`backend` 服務上的 `restart: on-failure`（已加入上方 Compose 檔）會自動恢復 — 一旦 broker 的 coordinator metadata 穩定下來，重試必定成功。這是單 broker 開發叢集的怪癖，不是應用程式的 bug。
+* **已知的冷啟動競態**：全新的 `docker compose up --build backend` 時，後端的 4 個獨立 consumer group（`event-service-group`、`machine-service-group`、`alert-service-group`、`rules-service-group`）會同時向單一 broker 叢集請求 group coordinator。實際觀察到這偶爾會拋出一個未重試的 `KafkaJSProtocolError`，讓後端程序在第一次開機時就崩潰。`backend` 服務上的 `restart: on-failure`（已加入上方 Compose 檔）會自動恢復 — 一旦 broker 的 coordinator metadata 穩定下來，重試必定成功。這是單 broker 開發叢集的怪癖，不是應用程式的 bug。
 
 ---
 
@@ -121,6 +122,7 @@ volumes:
 | `MONGODB_URI` | `backend` | MongoDB 連線字串。 |
 | `KAFKA_BROKERS` | `backend` | Kafka bootstrap server 位址。 |
 | `KAFKA_TOPIC_MACHINE_EVENTS` | `backend` | Topic 名稱，保持為變數而非寫死，讓 `docs/design/event-schema.md` §8 的命名慣例可以演進而不需改程式。 |
+| `KAFKA_TOPIC_MACHINE_EVENTS_ENRICHED` | `backend` | Rule Engine 重新發布分類後事件的 topic；Machine Service 與 Alert Service 改訂閱這個，不再訂閱 `KAFKA_TOPIC_MACHINE_EVENTS`（`openspec/changes/add-rule-engine/design.md` D1）。預設為 `machine.events.enriched`，與原始 topic 一樣是自動建立。 |
 | `LLM_PROVIDER` | `backend` | Insight Service 要使用哪個 LLM adapter。預設為 `mock`（內建、不需 API key），讓本機開發與 demo 不需外部憑證即可運行；未知的值會讓啟動快速失敗。 |
 | `LLM_API_KEY` | `backend` | Insight Service 呼叫 LLM API 的憑證（`architecture.md` §7.6）。不進版控 — 透過本機 `.env` 檔或 shell 環境提供。`mock` provider 不使用。 |
 | `LLM_MODEL` | `backend` | 傳給所設定 LLM provider 的模型識別碼。`mock` provider 不使用。 |

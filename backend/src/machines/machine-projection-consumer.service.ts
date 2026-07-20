@@ -18,17 +18,9 @@ import {
 } from './schemas/machine-status-transition.schema';
 import { clampHealthScore, raiseSeverity } from './machine-status.util';
 
-// MVP rule (design.md Decision 1 of remaining-mvp-event-types): any
-// STATUS_CHANGED to WARNING is treated as sensor failure. Deliberately not
-// shared with alert-consumer.service.ts's identically-named function — see
-// docs/design/machine-schema.md §5.4 and
-// openspec/changes/duplicate-logic-cleanup/design.md Decision 2. A contract
-// test asserts the two stay in agreement.
-export function isStatusChangedSensorFailure(currentStatus: string): boolean {
-  return currentStatus === 'WARNING';
-}
-
-// Machine Service: projects events into current machine state.
+// Machine Service: projects events into current machine state. Consumes the
+// Rule Engine's enriched topic, reading its classification instead of
+// re-deriving it (openspec/changes/add-rule-engine/design.md D5).
 // Own consumer group per ai/rules/kafka-consumer-conventions.md.
 @Injectable()
 export class MachineProjectionConsumerService extends KafkaConsumerBase {
@@ -39,7 +31,7 @@ export class MachineProjectionConsumerService extends KafkaConsumerBase {
     @InjectModel(MachineStatusTransition.name)
     private readonly transitionModel: Model<MachineStatusTransitionDocument>,
   ) {
-    super(kafka, 'machine-service-group', env.kafkaTopicMachineEvents);
+    super(kafka, 'machine-service-group', env.kafkaTopicMachineEventsEnriched);
   }
 
   protected async handleMessage(event: MachineEvent): Promise<boolean> {
@@ -58,7 +50,7 @@ export class MachineProjectionConsumerService extends KafkaConsumerBase {
       case 'STATUS_CHANGED': {
         const currentStatus = event.payload.currentStatus as MachineStatus;
         machine.status = currentStatus;
-        if (isStatusChangedSensorFailure(currentStatus)) {
+        if (event.isSensorFailure) {
           machine.healthScore = clampHealthScore(machine.healthScore - 15);
         }
         break;
@@ -72,7 +64,7 @@ export class MachineProjectionConsumerService extends KafkaConsumerBase {
           break;
         }
         machine.currentTemperature = temperature;
-        if (temperature > machine.temperatureThreshold) {
+        if (event.temperatureExceedsThreshold) {
           machine.status = raiseSeverity(machine.status, 'WARNING');
           machine.healthScore = clampHealthScore(machine.healthScore - 10);
         }

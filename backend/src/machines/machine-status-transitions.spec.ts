@@ -14,7 +14,6 @@ function makeMachine(status: string) {
     machineId: 'M-001',
     status,
     healthScore: 100,
-    temperatureThreshold: 80,
     productionCount: 0,
     currentTemperature: null,
     lastEventId: null,
@@ -66,7 +65,7 @@ describe('machine status transition recording', () => {
     expect(machine.save).toHaveBeenCalled();
   });
 
-  it('records nothing when the status is unchanged', async () => {
+  it('records nothing when the status is unchanged (temperatureExceedsThreshold: false)', async () => {
     const machine = makeMachine('RUNNING');
     const consumer = makeConsumer(machine, transitionModel);
 
@@ -74,11 +73,38 @@ describe('machine status transition recording', () => {
       asEvent({
         ...BASE_EVENT,
         eventType: 'TEMPERATURE_REPORTED',
-        payload: { temperature: 50, unit: 'C' }, // within threshold
+        payload: { temperature: 50, unit: 'C' },
+        temperatureExceedsThreshold: false,
       }),
     );
 
     expect(transitionModel.create).not.toHaveBeenCalled();
+    expect(machine.status).toBe('RUNNING');
+    expect(machine.healthScore).toBe(100);
+    expect(machine.save).toHaveBeenCalled();
+  });
+
+  it('raises status to WARNING and records a transition when temperatureExceedsThreshold is true', async () => {
+    const machine = makeMachine('RUNNING');
+    const consumer = makeConsumer(machine, transitionModel);
+
+    await consumer['handleMessage'](
+      asEvent({
+        ...BASE_EVENT,
+        eventType: 'TEMPERATURE_REPORTED',
+        payload: { temperature: 88, unit: 'C' },
+        temperatureExceedsThreshold: true,
+      }),
+    );
+
+    expect(transitionModel.create).toHaveBeenCalledWith({
+      machineId: 'M-001',
+      fromStatus: 'RUNNING',
+      toStatus: 'WARNING',
+      at: BASE_EVENT.occurredAt,
+      eventId: BASE_EVENT.eventId,
+    });
+    expect(machine.healthScore).toBe(90);
     expect(machine.save).toHaveBeenCalled();
   });
 

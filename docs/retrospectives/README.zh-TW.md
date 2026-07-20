@@ -9,6 +9,7 @@
 | [`2026-07-backend-implementation-lessons.md`](2026-07-backend-implementation-lessons.md) | 初版後端建置期間的 3 輪 `/code-review`，以及一次完整的架構翻案（Kafka consumer 重試邏輯）。5 個根因模式，多數與驗證方法論有關，而非單純的寫程式失誤。 |
 | [`2026-07-dashboard-metrics-review-lessons.md`](2026-07-dashboard-metrics-review-lessons.md) | dashboard-operational-metrics 變更的 `/code-review`（10 個確認的發現）。4 個根因模式，最重要的是主投影關鍵路徑上的次要寫入與 poison-pill 分類器交互作用，導致事件永久遺失 — 兩個各自正確的機制以破壞性的方式組合。 |
 | [`2026-07-observability-review-lessons.md`](2026-07-observability-review-lessons.md) | add-observability 變更的 `/code-review`（7 個確認的發現）。5 個根因模式，其中兩個是本文件庫先前已寫下的模式的直接重演 — 核心教訓是「把一個模式寫下來一次」不足以阻止它在不同檔案裡以不同形狀重新發生。 |
+| [`2026-07-rule-engine-review-lessons.md`](2026-07-rule-engine-review-lessons.md) | add-rule-engine 變更的 `/code-review`（10 個確認/合理的發現）。6 個根因模式；headline 的那個不是程式碼失誤 — 10 個發現裡有 3 個，是同一個 agent 在同一個 session 裡稍早已經正確套用過的慣例，卻沒有再套用到這個變更自己的新 artifact 上。 |
 
 ## 什麼時候新增
 

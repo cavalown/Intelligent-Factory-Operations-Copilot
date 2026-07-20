@@ -115,6 +115,17 @@ severity / alert / machine status = interpretation
 
 這讓 producer 的責任保持簡單，並避免商業邏輯在各 producer 之間重複。
 
+### 3.3 Rule Engine 附加欄位
+
+有兩個額外的信封欄位只存在於 `machine.events.enriched`（Rule Engine 重新發布的 topic）— 從不出現在 producer 寫入的原始 `machine.events` topic 上（`openspec/changes/add-rule-engine/design.md` D1–D3）：
+
+| 欄位 | 型別 | 必填 | 說明 |
+| --- | --- | --- | --- |
+| `temperatureExceedsThreshold` | boolean | 否 | 只出現在重新發布的 `TEMPERATURE_REPORTED` 事件上；若機台不存在則省略。 |
+| `isSensorFailure` | boolean | 否 | 只出現在重新發布的 `STATUS_CHANGED` 事件上。 |
+
+其餘所有信封欄位（包含 `eventId`）都原封不動從來源事件帶過來(§3.1)— 附加後的事件是原事件更豐富的副本,不是新事件。Machine Service 與 Alert Service 訂閱 `machine.events.enriched`,直接讀取這些欄位而不是從 `payload` 重新推導;Event Service 不受影響,因為它仍然訂閱原始的 `machine.events`。
+
 ---
 
 ## 4. 事件類型

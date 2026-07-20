@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s http://localhost:3000/api/machines/M-999-NOPE -w '\\\\nHTTP %{http_code}\\\\n')",
+      "Bash(git status *)",
+      "Bash(git grep *)",
+      "Bash(curl -s -X POST http://localhost:3000/api/simulator/events -H 'Content-Type: application/json' -d '{ *)",
+      "Bash(curl -s http://localhost:3000/api/machines/M-002 -w '\\\\nHTTP %{http_code}\\\\n')",
+      "Bash(curl -s http://localhost:3000/api/machines/M-888-NOPE -w '\\\\nHTTP %{http_code}\\\\n')"
+    ]
+  }
+}

@@ -734,13 +734,14 @@ backend/
 ├── machines/
 ├── events/
 ├── alerts/
+├── rules/        # Rule Engine: enrichment consumer, owns no persistence
 ├── insights/
 ├── dashboard/    # API-layer composition only (§7.7) — owns no persistence
 ├── simulator/
 └── shared/
 ```
 
-Each module should own its domain logic and persistence access. `dashboard/` is the exception that proves the rule: it is the §7.7 API-layer aggregation seam, composing reads from other modules' exported services (added by the `dashboard-operational-metrics` change when `/dashboard/stats` began spanning the machines and events domains); it owns no models or collections.
+Each module should own its domain logic and persistence access. `dashboard/` is the exception that proves the rule: it is the §7.7 API-layer aggregation seam, composing reads from other modules' exported services (added by the `dashboard-operational-metrics` change when `/dashboard/stats` began spanning the machines and events domains); it owns no models or collections. `rules/` is the other: it computes classification once and republishes it (`add-rule-engine` design.md), owning no models or collections either.
 
 ### 14.2 Service Extraction Path
 

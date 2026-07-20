@@ -9,6 +9,10 @@ export const env = {
   kafkaBrokers: (process.env.KAFKA_BROKERS ?? 'localhost:9093').split(','),
   kafkaTopicMachineEvents:
     process.env.KAFKA_TOPIC_MACHINE_EVENTS ?? 'machine.events',
+  // Rule Engine's enriched republish topic (add-rule-engine design.md D1).
+  kafkaTopicMachineEventsEnriched:
+    process.env.KAFKA_TOPIC_MACHINE_EVENTS_ENRICHED ??
+    'machine.events.enriched',
   // Insight Service LLM configuration, per docs/deployment/docker-compose.md §5.
   // Defaults to the built-in "mock" provider so local dev and the demo run
   // without an API key; real adapters read llmApiKey/llmModel.

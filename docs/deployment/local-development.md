@@ -48,6 +48,7 @@ PORT=3000
 MONGODB_URI=mongodb://localhost:27017/ifoc
 KAFKA_BROKERS=localhost:9093
 KAFKA_TOPIC_MACHINE_EVENTS=machine.events
+KAFKA_TOPIC_MACHINE_EVENTS_ENRICHED=machine.events.enriched
 LLM_API_KEY=<your key>
 ```
 

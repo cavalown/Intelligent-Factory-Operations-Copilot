@@ -1,16 +1,33 @@
 <script setup lang="ts">
-import { useQuery } from '@tanstack/vue-query';
-import { NCard, NEmpty, NList, NListItem, NTag, NText } from 'naive-ui';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
+import { NButton, NCard, NEmpty, NList, NListItem, NTag, NText } from 'naive-ui';
 import { RouterLink } from 'vue-router';
-import { listAlerts } from '../api/alerts';
+import { acknowledgeAlert, listAlerts, resolveAlert } from '../api/alerts';
 import { formatRelativeTime } from '../format';
 
 // Dashboard Active Alerts widget (dashboard-operational-metrics design D5):
 // the actionable "what needs attention now" view, polling on the default
-// interval. ACK lifecycle is Phase 2 — read-only until then.
+// interval. Queries ACTIVE + ACKNOWLEDGED — an acknowledged alert still
+// needs attention until resolved (add-alert-lifecycle design D3).
+const queryKey = ['alerts', { status: 'ACTIVE,ACKNOWLEDGED' }];
 const alertsQuery = useQuery({
-  queryKey: ['alerts', { status: 'ACTIVE' }],
-  queryFn: () => listAlerts({ status: 'ACTIVE', limit: 8 }),
+  queryKey,
+  queryFn: () => listAlerts({ status: ['ACTIVE', 'ACKNOWLEDGED'], limit: 8 }),
+});
+
+const queryClient = useQueryClient();
+const invalidate = () => queryClient.invalidateQueries({ queryKey: ['alerts'] });
+
+const acknowledgeMutation = useMutation({
+  mutationFn: (alert: { machineId: string; alertId: string }) =>
+    acknowledgeAlert(alert.machineId, alert.alertId),
+  onSuccess: invalidate,
+});
+
+const resolveMutation = useMutation({
+  mutationFn: (alert: { machineId: string; alertId: string }) =>
+    resolveAlert(alert.machineId, alert.alertId),
+  onSuccess: invalidate,
 });
 </script>
 
@@ -32,6 +49,9 @@ const alertsQuery = useQuery({
           >
             {{ alert.severity }}
           </NTag>
+          <NTag v-if="alert.status === 'ACKNOWLEDGED'" type="default" size="small">
+            ACKNOWLEDGED
+          </NTag>
           <RouterLink
             :to="{ name: 'machine-detail', params: { id: alert.machineId } }"
             class="alert-machine"
@@ -42,6 +62,39 @@ const alertsQuery = useQuery({
           <NText depth="3" class="alert-time">
             {{ formatRelativeTime(alert.createdAt) }}
           </NText>
+          <NButton
+            v-if="alert.status === 'ACTIVE'"
+            size="tiny"
+            :loading="
+              acknowledgeMutation.isPending.value &&
+              acknowledgeMutation.variables.value?.alertId === alert.alertId
+            "
+            @click="
+              acknowledgeMutation.mutate({
+                machineId: alert.machineId,
+                alertId: alert.alertId,
+              })
+            "
+          >
+            Acknowledge
+          </NButton>
+          <NButton
+            size="tiny"
+            type="primary"
+            secondary
+            :loading="
+              resolveMutation.isPending.value &&
+              resolveMutation.variables.value?.alertId === alert.alertId
+            "
+            @click="
+              resolveMutation.mutate({
+                machineId: alert.machineId,
+                alertId: alert.alertId,
+              })
+            "
+          >
+            Resolve
+          </NButton>
         </div>
       </NListItem>
     </NList>

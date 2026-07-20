@@ -95,9 +95,10 @@ export interface Alert {
   machineId: string;
   eventId: string;
   severity: 'WARNING' | 'CRITICAL';
-  status: 'ACTIVE' | 'RESOLVED';
+  status: 'ACTIVE' | 'ACKNOWLEDGED' | 'RESOLVED';
   message: string;
   createdAt: string;
+  acknowledgedAt: string | null;
   resolvedAt: string | null;
 }
 

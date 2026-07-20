@@ -49,4 +49,23 @@ describe('alert status query validation (design D8)', () => {
     });
     await expect(service.listAlerts({})).resolves.toEqual({ data: [] });
   });
+
+  // add-alert-lifecycle design D3: status accepts a comma-separated list.
+  it('rejects a multi-value status with any invalid segment', async () => {
+    await expectInvalid('ACTIVE,foo');
+  });
+
+  it('accepts a valid multi-value status and queries with $in', async () => {
+    await expect(
+      service.listAlerts({ status: 'ACTIVE,ACKNOWLEDGED' }),
+    ).resolves.toEqual({ data: [] });
+    expect(alertModel.find).toHaveBeenCalledWith({
+      status: { $in: ['ACTIVE', 'ACKNOWLEDGED'] },
+    });
+  });
+
+  it('queries a single value directly, not wrapped in $in', async () => {
+    await service.listAlerts({ status: 'ACTIVE' });
+    expect(alertModel.find).toHaveBeenCalledWith({ status: 'ACTIVE' });
+  });
 });

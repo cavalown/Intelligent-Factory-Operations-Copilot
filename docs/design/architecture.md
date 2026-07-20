@@ -642,6 +642,7 @@ severity
 status
 message
 createdAt
+acknowledgedAt
 resolvedAt
 ```
 

@@ -4,7 +4,7 @@ import { HydratedDocument } from 'mongoose';
 export const ALERT_SEVERITIES = ['WARNING', 'CRITICAL'] as const;
 export type AlertSeverity = (typeof ALERT_SEVERITIES)[number];
 
-export const ALERT_STATUSES = ['ACTIVE', 'RESOLVED'] as const;
+export const ALERT_STATUSES = ['ACTIVE', 'ACKNOWLEDGED', 'RESOLVED'] as const;
 export type AlertStatus = (typeof ALERT_STATUSES)[number];
 
 export type AlertDocument = HydratedDocument<Alert>;
@@ -39,6 +39,9 @@ export class Alert {
 
   @Prop({ required: true })
   createdAt: string;
+
+  @Prop({ type: String, default: null })
+  acknowledgedAt: string | null;
 
   @Prop({ type: String, default: null })
   resolvedAt: string | null;

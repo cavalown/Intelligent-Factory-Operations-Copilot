@@ -220,7 +220,7 @@ Returns alerts derived from this machine's events, most recent first.
 
 | Param | Type | Required | Description |
 | --- | --- | --- | --- |
-| `status` | string | No | Filter by `ACTIVE` or `RESOLVED`. Returns both when omitted. |
+| `status` | string | No | Filter by one or more of `ACTIVE`, `ACKNOWLEDGED`, `RESOLVED`, comma-separated (e.g. `ACTIVE,ACKNOWLEDGED`). Returns all statuses when omitted. |
 
 **Response `200`**
 
@@ -235,6 +235,7 @@ Returns alerts derived from this machine's events, most recent first.
       "status": "ACTIVE",
       "message": "Temperature 95C exceeds warning threshold.",
       "createdAt": "2026-07-02T10:30:01.000Z",
+      "acknowledgedAt": null,
       "resolvedAt": null
     }
   ]
@@ -431,11 +432,73 @@ Returns rolling-24h time-in-status for one machine, computed from the `machine_s
 
 Cross-machine alert read backing the Dashboard's Active Alerts widget. Same item shape as §4.4, most-recent-first.
 
-**Query parameters:** `status` (optional, `ACTIVE` | `RESOLVED`), `limit` (optional, default 20, capped at 100).
+**Query parameters:** `status` (optional, one or more of `ACTIVE` | `ACKNOWLEDGED` | `RESOLVED`, comma-separated), `limit` (optional, default 20, capped at 100).
 
 **Response `200`** — `{ "data": [ ...alerts ] }`.
 
-**Response `400`** — `INVALID_QUERY_PARAMETER` if `status` is not one of `ACTIVE` | `RESOLVED` (also applies to §4.4's `status` filter). Out-of-range `limit` values are clamped, not rejected.
+**Response `400`** — `INVALID_QUERY_PARAMETER` if any comma-separated `status` segment is not one of `ACTIVE` | `ACKNOWLEDGED` | `RESOLVED` (also applies to §4.5's `status` filter). Out-of-range `limit` values are clamped, not rejected.
+
+---
+
+### 4.14 `POST /machines/:id/alerts/:alertId/acknowledge`
+
+Marks an alert as seen by an operator. Valid from `ACTIVE` (→ `ACKNOWLEDGED`) and `ACKNOWLEDGED` (no-op, already acknowledged). Rejected from `RESOLVED` — an alert cannot move backward in its lifecycle (`add-alert-lifecycle` design D1).
+
+**Request Body** — none required.
+
+```json
+{}
+```
+
+**Response `200`** — the updated alert, same shape as §4.5's items.
+
+```json
+{
+  "alertId": "alert_001",
+  "machineId": "M-001",
+  "eventId": "evt_temp_001",
+  "severity": "WARNING",
+  "status": "ACKNOWLEDGED",
+  "message": "Temperature 95C exceeds warning threshold.",
+  "createdAt": "2026-07-02T10:30:01.000Z",
+  "acknowledgedAt": "2026-07-02T10:35:00.000Z",
+  "resolvedAt": null
+}
+```
+
+**Response `404`** — `MACHINE_NOT_FOUND` if `:id` does not exist; `ALERT_NOT_FOUND` if `:alertId` does not exist for that machine.
+
+**Response `409`** — `INVALID_ALERT_TRANSITION` if the alert's current `status` is `RESOLVED`.
+
+---
+
+### 4.15 `POST /machines/:id/alerts/:alertId/resolve`
+
+Marks an alert as fixed. Valid from `ACTIVE` or `ACKNOWLEDGED` (→ `RESOLVED`; resolving directly from `ACTIVE` is allowed — acknowledgment is not a required step) and `RESOLVED` (no-op, already resolved).
+
+**Request Body** — none required.
+
+```json
+{}
+```
+
+**Response `200`** — the updated alert, same shape as §4.5's items.
+
+```json
+{
+  "alertId": "alert_001",
+  "machineId": "M-001",
+  "eventId": "evt_temp_001",
+  "severity": "WARNING",
+  "status": "RESOLVED",
+  "message": "Temperature 95C exceeds warning threshold.",
+  "createdAt": "2026-07-02T10:30:01.000Z",
+  "acknowledgedAt": null,
+  "resolvedAt": "2026-07-02T10:40:00.000Z"
+}
+```
+
+**Response `404`** — `MACHINE_NOT_FOUND` if `:id` does not exist; `ALERT_NOT_FOUND` if `:alertId` does not exist for that machine.
 
 ---
 
@@ -466,9 +529,10 @@ See `docs/design/event-schema.md` section 3 for the full envelope and section 5 
 | `machineId` | string | Machine this alert belongs to. |
 | `eventId` | string | `eventId` that triggered this alert. |
 | `severity` | string | `WARNING` or `CRITICAL`. |
-| `status` | string | `ACTIVE` or `RESOLVED`. |
+| `status` | string | `ACTIVE`, `ACKNOWLEDGED`, or `RESOLVED`. |
 | `message` | string | Human-readable alert description. |
 | `createdAt` | string | When the alert was created. |
+| `acknowledgedAt` | string \| null | When the alert was acknowledged, if applicable. |
 | `resolvedAt` | string \| null | When the alert was resolved, if applicable. |
 
 ### 5.4 AI Summary
@@ -491,10 +555,12 @@ See `docs/design/event-schema.md` section 3 for the full envelope and section 5 
 | HTTP Status | Code | Meaning |
 | --- | --- | --- |
 | `400` | `INVALID_EVENT_ENVELOPE` | Request body is missing a required envelope field, a field has the wrong type, or a timestamp is not canonical ISO-8601 UTC (`YYYY-MM-DDTHH:mm:ss.sssZ`, per §2.3). |
-| `400` | `INVALID_QUERY_PARAMETER` | A query parameter value is outside its documented domain (e.g. `status` not in `ACTIVE`/`RESOLVED`). |
+| `400` | `INVALID_QUERY_PARAMETER` | A query parameter value is outside its documented domain (e.g. `status` not in `ACTIVE`/`ACKNOWLEDGED`/`RESOLVED`). |
 | `404` | `MACHINE_NOT_FOUND` | The `:id` path parameter does not match an existing machine. |
 | `404` | `UNKNOWN_MACHINE` | `POST /simulator/events` body references a `machineId` that isn't pre-seeded. |
 | `404` | `SUMMARY_NOT_FOUND` | No AI summary has been generated yet for this machine (§4.6) or for the factory (§4.9). |
+| `404` | `ALERT_NOT_FOUND` | `:alertId` does not match an alert belonging to `:id` (§4.14, §4.15). |
+| `409` | `INVALID_ALERT_TRANSITION` | The requested alert state transition is not allowed from its current `status` (§4.14). |
 | `422` | `UNSUPPORTED_EVENT_TYPE` | `eventType` is not a recognized MVP event type. |
 | `422` | `PAYLOAD_VALIDATION_FAILED` | `payload` does not match the schema required for `eventType`. |
 | `502` | `LLM_CALL_FAILED` | The Insight Service could not reach the LLM API. |
@@ -515,7 +581,6 @@ This is independent of `schemaVersion` on the event envelope, which versions eve
 Not part of the MVP, but anticipated by the roadmap in `docs/product/product-roadmap.md`:
 
 ```text
-POST /machines/:id/alerts/:alertId/resolve   # Phase 2 — incident management
 GET  /events/search                          # Phase 3 — event search
 GET  /machines/:id/history                   # Phase 3 — machine history
 POST /insights/chat                          # Phase 4 — AI chat

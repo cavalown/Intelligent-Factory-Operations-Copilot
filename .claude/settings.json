@@ -11,7 +11,8 @@
       "Bash(npm config *)",
       "Bash(npx --yes playwright --version)",
       "Bash(npx --yes playwright install chromium --with-deps)",
-      "Bash(npm init *)"
+      "Bash(npm init *)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d['artifacts'], indent=2\\)\\); print\\('changeRoot:', d['changeRoot']\\)\")"
     ]
   }
 }

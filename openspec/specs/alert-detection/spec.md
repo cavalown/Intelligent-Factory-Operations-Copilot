@@ -4,17 +4,17 @@
 TBD - created by archiving change backend-walking-skeleton. Update Purpose after archive.
 ## Requirements
 ### Requirement: Create a WARNING alert when temperature exceeds threshold
-The system SHALL, upon consuming a `TEMPERATURE_REPORTED` event whose `payload.temperature` exceeds the machine's `temperatureThreshold`, create an alert with `severity: WARNING` and `status: ACTIVE`, per the Alert Rules in `CLAUDE.md` and `docs/design/architecture.md` §9.3.
+The system SHALL, upon consuming a `TEMPERATURE_REPORTED` event whose `temperatureExceedsThreshold` field is `true`, create an alert with `severity: WARNING` and `status: ACTIVE`, per the Alert Rules in `CLAUDE.md` and `docs/design/architecture.md` §9.3. Alert Service reads this classification from the event (computed once by the Rule Engine, per `openspec/changes/add-rule-engine/design.md`) rather than comparing `payload.temperature` to the machine's `temperatureThreshold` itself.
 
 #### Scenario: Alert created for over-threshold temperature
-- **WHEN** Alert Service consumes a `TEMPERATURE_REPORTED` event for `M-001` with `temperature` above `M-001`'s `temperatureThreshold`
+- **WHEN** Alert Service consumes a `TEMPERATURE_REPORTED` event for `M-001` with `temperatureExceedsThreshold: true`
 - **THEN** an alert document is created with `machineId: M-001`, `eventId` matching the source event, `severity: WARNING`, `status: ACTIVE`, and a human-readable `message`
 
 ### Requirement: No alert when within threshold
-The system SHALL NOT create an alert for a `TEMPERATURE_REPORTED` event within threshold.
+The system SHALL NOT create an alert for a `TEMPERATURE_REPORTED` event whose `temperatureExceedsThreshold` field is `false` or absent.
 
 #### Scenario: No alert for normal-range temperature
-- **WHEN** Alert Service consumes a `TEMPERATURE_REPORTED` event with `temperature` at or below the machine's `temperatureThreshold`
+- **WHEN** Alert Service consumes a `TEMPERATURE_REPORTED` event with `temperatureExceedsThreshold: false`
 - **THEN** no alert document is created
 
 ### Requirement: Idempotent on duplicate eventId
@@ -54,14 +54,14 @@ The system SHALL, upon consuming a `MAINTENANCE_REQUIRED` event, create an alert
 - **THEN** an alert document is created with `severity: WARNING`, `status: ACTIVE`, and a human-readable `message`
 
 ### Requirement: Conditionally create a WARNING alert on STATUS_CHANGED
-The system SHALL create an alert with `severity: WARNING` and `status: ACTIVE` when consuming a `STATUS_CHANGED` event whose `payload.currentStatus` is `WARNING`, and SHALL NOT create an alert for any other `currentStatus` value, per this change's design decision on sensor-failure detection.
+The system SHALL create an alert with `severity: WARNING` and `status: ACTIVE` when consuming a `STATUS_CHANGED` event whose `isSensorFailure` field is `true`, and SHALL NOT create an alert when `isSensorFailure` is `false`. Alert Service reads this classification from the event (computed once by the Rule Engine, per `openspec/changes/add-rule-engine/design.md`) rather than inspecting `payload.currentStatus` itself.
 
-#### Scenario: Alert created when STATUS_CHANGED sets WARNING
-- **WHEN** Alert Service consumes a `STATUS_CHANGED` event with `payload.currentStatus: "WARNING"`
+#### Scenario: Alert created when STATUS_CHANGED is classified as sensor failure
+- **WHEN** Alert Service consumes a `STATUS_CHANGED` event with `isSensorFailure: true`
 - **THEN** an alert document is created with `severity: WARNING` and `status: ACTIVE`
 
-#### Scenario: No alert for a non-WARNING STATUS_CHANGED
-- **WHEN** Alert Service consumes a `STATUS_CHANGED` event with `payload.currentStatus: "RUNNING"`
+#### Scenario: No alert for a STATUS_CHANGED not classified as sensor failure
+- **WHEN** Alert Service consumes a `STATUS_CHANGED` event with `isSensorFailure: false`
 - **THEN** no alert document is created
 
 ### Requirement: No alert on PRODUCTION_COMPLETED
@@ -97,8 +97,13 @@ The system SHALL expose `GET /alerts`, optionally filtered by `status` and bound
 - **THEN** at most 5 alerts are returned; requesting a limit above the server cap returns at most the cap
 
 ### Requirement: The status filter is validated against the alert-status domain
-The system SHALL reject a `status` query value (on `GET /alerts` and `GET /machines/:id/alerts`) that is not a member of the alert-status set (`ACTIVE`, `RESOLVED`), responding `400` with error code `INVALID_QUERY_PARAMETER`, validating membership against the same constant the schema uses.
+
+The system SHALL reject a `status` query value (on `GET /alerts` and `GET /machines/:id/alerts`) containing any comma-separated segment that is not a member of the alert-status set (`ACTIVE`, `ACKNOWLEDGED`, `RESOLVED`), responding `400` with error code `INVALID_QUERY_PARAMETER`, validating each segment's membership against the same constant the schema uses.
 
 #### Scenario: Out-of-domain status rejected
 - **WHEN** a client GETs `/alerts?status=foo` (or `?status=active`, wrong case)
 - **THEN** the system responds `400` with error code `INVALID_QUERY_PARAMETER` instead of silently returning an empty list
+
+#### Scenario: One invalid segment in a multi-value list rejects the whole request
+- **WHEN** a client GETs `/alerts?status=ACTIVE,foo`
+- **THEN** the system responds `400` with error code `INVALID_QUERY_PARAMETER`

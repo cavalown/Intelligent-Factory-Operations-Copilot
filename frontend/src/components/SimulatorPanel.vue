@@ -158,6 +158,6 @@ const canSubmit = computed(() => machineId.value !== null);
 
 <style scoped>
 .simulator-card {
-  max-width: 560px;
+  width: 100%;
 }
 </style>

@@ -69,7 +69,28 @@ VITE_API_BASE_URL=http://localhost:3000/api
 
 ---
 
-## 5. 與完整 Docker Compose 的比較
+## 5. 選用 — 載入 Dashboard Demo Dataset
+
+Backend API 就緒後，從另一個 terminal 載入精選事件 dataset：
+
+```bash
+cd backend
+npm run seed:demo
+```
+
+Backend 啟動時會自動確保固定的八台 demo 機台 roster 存在。此指令透過 Simulator API 發布 20 筆事件，涵蓋所有 MVP event type，並產生多樣的機台狀態、生產總數、溫度、告警與近期活動。Kafka consumers 為非同步處理，因此請等待數秒，讓所有 Dashboard view 完成更新。
+
+此指令可安全重跑：它會探索事件歷史中已儲存的固定 demo event ID，且只發布缺少的事件。如需指定非預設 backend URL：
+
+```bash
+IFOC_API_BASE_URL=http://localhost:3000/api npm run seed:demo
+```
+
+若指令回報缺少 demo 機台，請先重建或重新啟動 backend，讓其啟動 roster 執行後再重試。
+
+---
+
+## 6. 與完整 Docker Compose 的比較
 
 | | 完整 Docker Compose | 混合式（本文件） |
 | --- | --- | --- |
@@ -81,7 +102,7 @@ VITE_API_BASE_URL=http://localhost:3000/api
 
 ---
 
-## 6. 未定假設
+## 7. 未定假設
 
 1. **Node.js 版本**在 repo 中尚未釘選（還沒有 `.nvmrc` 或 `engines` 欄位，因為 `backend/` 與 `frontend/` 尚不存在）。專案腳手架建立後就釘選。
 2. 本文件假設 `backend` 的 `start:dev` 腳本與 `frontend` 的 `dev` 腳本存在，且從環境變數（而非寫死的設定檔）讀取設定 — 這是 NestJS/Vite 的標準做法，但在專案腳手架建立後值得確認。

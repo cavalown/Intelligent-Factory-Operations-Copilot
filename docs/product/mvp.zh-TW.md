@@ -104,7 +104,7 @@ Event Center 保持為一份純粹、不帶 severity 的完整稽核軌跡；單
 
 ## 模擬器（Simulator）
 
-讓使用者模擬工廠事件。
+讓使用者透過固定 desktop 側邊 panel 或 tablet／phone drawer 模擬工廠事件，同時保持目前營運 view 可見。
 
 支援的事件：
 
@@ -242,7 +242,7 @@ MVP 只使用 LLM。
 * Consumer 處理所有事件。
 * 事件持久化到 MongoDB。
 * 機台狀態正確更新。
-* AI 摘要由近期事件產生。（Phase 1 以 mock provider 驗證；真實 LLM 在 Phase 3 — 見 `docs/product/product-roadmap.md` Phase 3。）
+* 可顯示既有 mock AI Summary content，但 Generate／Regenerate 在 Phase 3 真實 LLM integration 完成前維持 disabled，並以 tooltip 說明尚未開放。
 * 整個 demo 過程不需要手動修改資料。
 
 ---
@@ -250,10 +250,10 @@ MVP 只使用 LLM。
 # Demo 情境
 
 1. 打開 Dashboard。
-2. 前往 Simulator。
+2. 使用 Dashboard 旁的 Simulator panel。
 3. 產生一個 **TEMPERATURE_REPORTED** 事件（超過該機台的閾值）。
-4. 確認事件出現在 Event Center。
+4. 打開 Event Center 並確認事件出現；繼續在該 view 旁使用 Simulator。
 5. 確認機台狀態改變。
 6. 打開機台詳情頁。
-7. 檢視 AI 產生的營運摘要。
+7. 檢視 AI Summary preview；generation 控制在 Phase 3 前維持 disabled。
 8. 用其他支援的事件類型重複上述步驟。

@@ -104,7 +104,7 @@ Event Center stays a plain, severity-free audit trail of everything that happene
 
 ## Simulator
 
-Allow users to simulate factory events.
+Allow users to simulate factory events from a persistent desktop side panel or a tablet/phone drawer while keeping the current operational view visible.
 
 Supported events:
 
@@ -242,7 +242,7 @@ The MVP is considered complete when:
 * Consumer processes all events.
 * Events are persisted in MongoDB.
 * Machine status is updated correctly.
-* AI Summary is generated from recent events. (Phase 1 verified with the mock provider; real LLM at Phase 3 — see `docs/product/product-roadmap.md` Phase 3.)
+* Existing mock AI Summary content may be displayed, but Generate/Regenerate stays disabled with an unavailable tooltip until the real LLM integration in Phase 3.
 * The entire demo can be completed without manual data modification.
 
 ---
@@ -250,10 +250,10 @@ The MVP is considered complete when:
 # Demo Scenario
 
 1. Open the Dashboard.
-2. Navigate to the Simulator.
+2. Use the Simulator panel beside the Dashboard.
 3. Generate a **TEMPERATURE_REPORTED** event (above the machine's threshold).
-4. Verify the event appears in the Event Center.
+4. Open Event Center and verify the event appears; keep using the Simulator alongside that view.
 5. Verify the machine status changes.
 6. Open the Machine Detail page.
-7. Review the AI-generated operational summary.
+7. Review the AI Summary preview; generation controls remain disabled until Phase 3.
 8. Repeat with other supported event types.

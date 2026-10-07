@@ -13,6 +13,6 @@ export const router = createRouter({
       meta: { navKey: 'machines' },
     },
     { path: '/events', name: 'events', component: () => import('./pages/EventCenterPage.vue') },
-    { path: '/simulator', name: 'simulator', component: () => import('./pages/SimulatorPage.vue') },
+    { path: '/simulator', redirect: { name: 'dashboard' } },
   ],
 });

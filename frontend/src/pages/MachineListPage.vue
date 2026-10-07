@@ -6,8 +6,10 @@ import {
   NCard,
   NDataTable,
   NEmpty,
+  NRadioButton,
+  NRadioGroup,
+  NSelect,
   NSkeleton,
-  NTag,
   NText,
   type DataTableColumns,
 } from 'naive-ui';
@@ -48,9 +50,36 @@ const machines = computed(() => {
     : all.filter((m) => m.status === statusFilter.value);
 });
 
-function clearFilter() {
-  router.replace({ name: 'machines' });
-}
+const statusCounts = computed(() => {
+  const counts = Object.fromEntries(
+    MACHINE_STATUSES.map((status) => [status, 0]),
+  ) as Record<MachineStatus, number>;
+  for (const machine of machinesQuery.data.value?.data ?? []) {
+    counts[machine.status] += 1;
+  }
+  return counts;
+});
+
+const statusSelection = computed({
+  get: () => statusFilter.value ?? 'ALL',
+  set: (value: string) => {
+    router.replace({
+      name: 'machines',
+      query: value === 'ALL' ? {} : { status: value },
+    });
+  },
+});
+
+const statusOptions = computed(() => [
+  {
+    label: `All (${machinesQuery.data.value?.data.length ?? 0})`,
+    value: 'ALL',
+  },
+  ...MACHINE_STATUSES.map((status) => ({
+    label: `${status[0]}${status.slice(1).toLowerCase()} (${statusCounts.value[status]})`,
+    value: status,
+  })),
+]);
 
 function goDetail(machineId: string) {
   router.push({ name: 'machine-detail', params: { id: machineId } });
@@ -93,17 +122,22 @@ function rowProps(row: Machine) {
 
 <template>
   <NCard title="Machines" size="small">
-    <template #header-extra>
-      <NTag
-        v-if="statusFilter !== null"
-        closable
-        type="info"
-        size="small"
-        @close="clearFilter"
-      >
-        Status: {{ statusFilter }}
-      </NTag>
-    </template>
+    <div class="status-filter">
+      <NSelect
+        v-if="isPhone"
+        v-model:value="statusSelection"
+        :options="statusOptions"
+        aria-label="Filter machines by status"
+      />
+      <NRadioGroup v-else v-model:value="statusSelection" size="small">
+        <NRadioButton
+          v-for="option in statusOptions"
+          :key="option.value"
+          :value="option.value"
+          :label="option.label"
+        />
+      </NRadioGroup>
+    </div>
 
     <!-- Phone: touch-friendly cards (add-responsive-ui design D3). Loading
          and empty states mirror what NDataTable provides built-in on the
@@ -157,6 +191,12 @@ function rowProps(row: Machine) {
 </template>
 
 <style scoped>
+.status-filter {
+  margin-bottom: 16px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 1px;
+}
 .machine-cards {
   display: flex;
   flex-direction: column;

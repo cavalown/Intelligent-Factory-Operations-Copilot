@@ -141,6 +141,15 @@ docker compose up -d
 
 預期順序：`kafka` 與 `mongodb` 先啟動（無依賴），接著 `backend`（依賴兩者），最後 `frontend`（依賴 `backend`）。後端啟動時應重試 Kafka/MongoDB 連線而不是崩潰循環，因為 Compose 的 `depends_on` 只等容器啟動，不等 Kafka/MongoDB 真正可以接受連線。`lgtm` 是獨立啟動的，跟 `backend` 之間沒有任何依賴關係 —— 這是刻意設計：backend 不會等它啟動（所以 `lgtm` image pull 失敗或很慢都不會卡住 backend），而且不論 `lgtm` 存在、不存在、停止或被移除,backend 都能正常服務,見 `add-observability/design.md` D5。
 
+全新 Dashboard 若要填入八台機台 roster 與 20 筆精選事件，請在 API 就緒後從 host 執行：
+
+```bash
+cd backend
+npm run seed:demo
+```
+
+事件會經過 Simulator API 與 Kafka，因此事件歷史、機台投影、告警、狀態轉換與 Dashboard 聚合資料會保持一致。重跑指令時會跳過已存在的 demo event ID。若 backend image 早於擴充 roster 的版本，請先執行 `docker compose up -d --build backend` 重建。
+
 要重置所有本機資料（事件、投影、Kafka log）：
 
 ```bash

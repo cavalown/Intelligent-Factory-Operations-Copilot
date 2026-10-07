@@ -31,12 +31,6 @@ export const NAV_ITEMS: NavItem[] = [
     tabLabel: 'Events',
     icon: 'M12 3a9 9 0 1 0 9 9M12 7v5l3 3M21 3v5h-5',
   },
-  {
-    key: 'simulator',
-    label: 'Simulator',
-    tabLabel: 'Simulator',
-    icon: 'M5 4l14 8-14 8V4z',
-  },
 ];
 
 // Which nav item a route highlights. Detail-style routes declare

@@ -113,17 +113,17 @@ function drillDown(filter?: MachineStatus) {
 
 <style scoped>
 .dashboard-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   margin-top: 12px;
   align-items: flex-start;
 }
 .dashboard-events {
-  flex: 3;
   min-width: 0; /* let the inner table scroll instead of forcing row width */
 }
 .dashboard-side {
-  flex: 2;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -133,12 +133,10 @@ function drillDown(filter?: MachineStatus) {
    breakpoint values live in ai/rules/frontend-responsive.md */
 @media (width < 1024px) {
   .dashboard-row {
-    flex-direction: column;
-    align-items: stretch;
+    grid-template-columns: minmax(0, 1fr);
   }
   .dashboard-events,
   .dashboard-side {
-    flex: none;
     width: 100%;
   }
 }

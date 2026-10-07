@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
+import { useQuery } from '@tanstack/vue-query';
 import {
   NAlert,
   NButton,
@@ -10,17 +10,16 @@ import {
   NListItem,
   NSkeleton,
   NText,
+  NTooltip,
 } from 'naive-ui';
 import { ApiError } from '../api/client';
-import { generateSummary, getSummary } from '../api/summaries';
+import { getSummary } from '../api/summaries';
 import { formatTimestamp } from '../format';
 
-// Advisory feature, three states (add-frontend-mvp design D6):
-// loaded summary / 404 → generate CTA / 502 → inline error + retry.
-// Never polls — regeneration is an explicit operator action.
+// Advisory preview: stored/mock content remains readable, while generation
+// stays disabled until a real LLM provider is integrated.
 const props = defineProps<{ machineId?: string }>();
 
-const queryClient = useQueryClient();
 const queryKey = computed(() =>
   props.machineId ? ['summary', 'machine', props.machineId] : ['summary', 'factory'],
 );
@@ -32,52 +31,28 @@ const summaryQuery = useQuery({
   retry: false,
 });
 
-const generateMutation = useMutation({
-  mutationFn: () => generateSummary(props.machineId),
-  onSuccess: (summary) => {
-    queryClient.setQueryData(queryKey.value, summary);
-  },
-});
-
 const noSummaryYet = computed(
   () =>
     summaryQuery.error.value instanceof ApiError &&
     summaryQuery.error.value.code === 'SUMMARY_NOT_FOUND',
 );
 
-const generateError = computed(() =>
-  generateMutation.error.value instanceof ApiError
-    ? generateMutation.error.value
-    : null,
-);
 </script>
 
 <template>
   <NCard title="AI Summary" size="small">
     <template #header-extra>
-      <NButton
-        size="small"
-        type="primary"
-        secondary
-        :loading="generateMutation.isPending.value"
-        @click="generateMutation.mutate()"
-      >
-        {{ summaryQuery.data.value ? 'Regenerate' : 'Generate' }}
-      </NButton>
+      <NTooltip trigger="hover">
+        <template #trigger>
+          <span class="disabled-action">
+            <NButton size="small" type="primary" secondary disabled>
+              {{ summaryQuery.data.value ? 'Regenerate' : 'Generate' }}
+            </NButton>
+          </span>
+        </template>
+        此功能尚未開放
+      </NTooltip>
     </template>
-
-    <!-- 502 (or any generate failure) stays inside this card; the rest of
-         the page keeps rendering (architecture.md §16). -->
-    <NAlert
-      v-if="generateError"
-      type="error"
-      :title="generateError.code"
-      closable
-      style="margin-bottom: 12px"
-      @close="generateMutation.reset()"
-    >
-      {{ generateError.message }}
-    </NAlert>
 
     <NSkeleton v-if="summaryQuery.isLoading.value" text :repeat="3" />
 
@@ -99,7 +74,7 @@ const generateError = computed(() =>
 
     <NEmpty
       v-else-if="noSummaryYet"
-      description="No summary yet — generate one from recent events."
+      description="AI summaries are coming soon."
     />
 
     <NAlert v-else-if="summaryQuery.error.value" type="warning" title="Could not load summary">
@@ -110,3 +85,10 @@ const generateError = computed(() =>
     </NAlert>
   </NCard>
 </template>
+
+<style scoped>
+.disabled-action {
+  display: inline-flex;
+  cursor: not-allowed;
+}
+</style>

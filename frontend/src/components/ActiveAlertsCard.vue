@@ -51,7 +51,7 @@ const alertsQuery = useQuery({
 <style scoped>
 .alert-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   font-size: 13px;
 }
@@ -60,9 +60,10 @@ const alertsQuery = useQuery({
 }
 .alert-message {
   flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 .alert-time {
   flex-shrink: 0;

@@ -142,6 +142,15 @@ docker compose up -d
 
 Expected order: `kafka` and `mongodb` start first (no dependencies), then `backend` (depends on both), then `frontend` (depends on `backend`). The backend should retry its Kafka/MongoDB connections on startup rather than crash-looping, since Compose's `depends_on` only waits for the container to start, not for Kafka/MongoDB to be ready to accept connections. `lgtm` starts independently, with no dependency relationship to `backend` in either direction — deliberately: the backend never waits on it to start (so a failed/slow `lgtm` image pull can never block `backend` from coming up) and serves normally whether `lgtm` is present, absent, stopped, or removed, per `add-observability/design.md` D5.
 
+To populate a fresh dashboard with the eight-machine roster and 20 curated events after the API is ready, run from the host:
+
+```bash
+cd backend
+npm run seed:demo
+```
+
+The events go through the Simulator API and Kafka, so event history, machine projections, alerts, transitions, and dashboard aggregates stay consistent. Re-running the command skips demo event IDs already present. If the backend image predates the expanded roster, rebuild it first with `docker compose up -d --build backend`.
+
 To reset all local data (events, projections, Kafka log):
 
 ```bash

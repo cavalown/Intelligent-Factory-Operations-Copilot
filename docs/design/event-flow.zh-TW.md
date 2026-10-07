@@ -28,7 +28,7 @@
 }
 ```
 
-操作員正在看儀表板的 Simulator 頁面，為 `M-001` 觸發一個讀值 `95°C` 的 `TEMPERATURE_REPORTED` 事件 — 與 `event-schema.md` §11.1、`api.md` §4.7、`machine-schema.md` §9 貫穿使用的是同一個事件。
+操作員使用 Dashboard 旁的 Simulator panel，為 `M-001` 觸發一個讀值 `95°C` 的 `TEMPERATURE_REPORTED` 事件 — 與 `event-schema.md` §11.1、`api.md` §4.7、`machine-schema.md` §9 貫穿使用的是同一個事件。
 
 ---
 

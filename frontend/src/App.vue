@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
   NConfigProvider,
@@ -8,15 +8,20 @@ import {
   NLayoutHeader,
   NLayoutContent,
   NMenu,
+  NButton,
+  NDrawer,
+  NDrawerContent,
   type MenuOption,
 } from 'naive-ui';
 import BottomTabBar from './components/BottomTabBar.vue';
+import SimulatorPanel from './components/SimulatorPanel.vue';
 import { useViewport } from './composables/useViewport';
 import { NAV_ITEMS, activeNavKey } from './navigation';
 
 const route = useRoute();
 const router = useRouter();
-const { isPhone } = useViewport();
+const { isPhone, isDesktop } = useViewport();
+const simulatorOpen = ref(false);
 
 // Destinations and active-key logic shared with the phone tab bar via
 // navigation.ts (review fix: the two navs previously drifted).
@@ -51,10 +56,28 @@ const contentClass = computed(() =>
             :value="activeKey"
             @update:value="onMenuSelect"
           />
+          <NButton
+            v-if="!isDesktop"
+            class="simulator-trigger"
+            type="primary"
+            @click="simulatorOpen = true"
+          >
+            Simulator
+          </NButton>
         </NLayoutHeader>
-        <NLayoutContent :content-class="contentClass">
-          <RouterView />
-        </NLayoutContent>
+        <div class="app-shell">
+          <NLayoutContent :content-class="contentClass" class="app-main">
+            <RouterView />
+          </NLayoutContent>
+          <aside v-if="isDesktop" class="simulator-rail">
+            <SimulatorPanel />
+          </aside>
+        </div>
+        <NDrawer v-model:show="simulatorOpen" placement="right" :width="360">
+          <NDrawerContent title="Run a simulation" closable>
+            <SimulatorPanel />
+          </NDrawerContent>
+        </NDrawer>
         <BottomTabBar v-if="isPhone" />
       </NLayout>
     </NMessageProvider>
@@ -76,6 +99,30 @@ const contentClass = computed(() =>
   font-weight: 700;
   font-size: 18px;
   letter-spacing: 1px;
+}
+.simulator-trigger {
+  margin-left: auto;
+  min-height: 40px;
+}
+.app-shell {
+  display: flex;
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+  align-items: flex-start;
+}
+.app-main {
+  min-width: 0;
+  flex: 1;
+}
+.simulator-rail {
+  width: 340px;
+  flex: 0 0 340px;
+  position: sticky;
+  top: 56px;
+  padding: 24px 24px 24px 0;
+  max-height: calc(100vh - 56px);
+  overflow-y: auto;
 }
 </style>
 

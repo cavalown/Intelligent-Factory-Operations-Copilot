@@ -28,7 +28,7 @@ Machine `M-001` exists with this state *before* the event in question arrives:
 }
 ```
 
-The operator is looking at the dashboard's Simulator page and triggers a `TEMPERATURE_REPORTED` event reading `95°C` for `M-001` — the same event used as the running example in `event-schema.md` §11.1, `api.md` §4.7, and `machine-schema.md` §9.
+The operator uses the Simulator panel beside the dashboard and triggers a `TEMPERATURE_REPORTED` event reading `95°C` for `M-001` — the same event used as the running example in `event-schema.md` §11.1, `api.md` §4.7, and `machine-schema.md` §9.
 
 ---
 

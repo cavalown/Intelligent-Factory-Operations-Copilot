@@ -69,7 +69,28 @@ Identical to the containerized setup — the frontend always talks to the backen
 
 ---
 
-## 5. Comparison with Full Docker Compose
+## 5. Optional — Load the Dashboard Demo Dataset
+
+After the backend API is ready, load the curated event dataset from another terminal:
+
+```bash
+cd backend
+npm run seed:demo
+```
+
+Backend startup automatically ensures the fixed roster of eight demo machines exists. The command publishes 20 events through the Simulator API, covering every MVP event type and producing varied machine statuses, production totals, temperatures, alerts, and recent activity. Kafka consumers are asynchronous, so allow a few seconds for every dashboard view to update.
+
+The command is safe to run again: it discovers the deterministic demo event IDs already stored in event history and publishes only missing events. To target a non-default backend URL:
+
+```bash
+IFOC_API_BASE_URL=http://localhost:3000/api npm run seed:demo
+```
+
+If the command reports missing demo machines, rebuild or restart the backend so its startup roster runs before retrying.
+
+---
+
+## 6. Comparison with Full Docker Compose
 
 | | Full Docker Compose | Hybrid (this document) |
 | --- | --- | --- |
@@ -81,7 +102,7 @@ Identical to the containerized setup — the frontend always talks to the backen
 
 ---
 
-## 6. Open Assumptions
+## 7. Open Assumptions
 
 1. **Node.js version** is not yet pinned anywhere in the repo (no `.nvmrc` or `engines` field exists yet, since `backend/` and `frontend/` don't exist). Pin this once the projects are scaffolded.
 2. This document assumes `backend`'s `start:dev` script and `frontend`'s `dev` script exist and read configuration from environment variables (not a hardcoded config file) — standard for NestJS/Vite, but worth confirming once those projects are scaffolded.
